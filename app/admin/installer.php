@@ -9,9 +9,11 @@ function install_defaults(): array
 {
     $host = $_SERVER['HTTP_HOST'] ?? 'admin.thegiftboxx.com';
     $root = preg_replace('/^admin\./', '', $host);
-    $publicDir = is_dir(APP_ROOT . '/public_html') ? APP_ROOT . '/public_html' : APP_ROOT . '/public';
+    // Test setup (docs/STAGING.md): shop on new.thegiftboxx.com in public_html/new.
+    $staging = is_file(APP_ROOT . '/public_html/new/index.php');
+    $publicDir = $staging ? APP_ROOT . '/public_html/new' : (is_dir(APP_ROOT . '/public_html') ? APP_ROOT . '/public_html' : APP_ROOT . '/public');
     return [
-        'site_url' => 'https://' . $root,
+        'site_url' => 'https://' . ($staging ? 'new.' : '') . $root,
         'admin_url' => 'https://' . $host,
         'uploads_dir' => $publicDir . '/uploads',
         'db_host' => 'localhost', 'db_name' => '', 'db_user' => '', 'db_pass' => '',

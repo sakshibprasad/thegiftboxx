@@ -1,5 +1,7 @@
 # Putting the new Gift Boxx website live (Hostinger)
 
+> **Want to test first?** Follow [STAGING.md](STAGING.md). It sets everything up on **new.thegiftboxx.com** while WordPress keeps running, and then shows the 10-minute switch to the real domain. This page is the direct route.
+
 This guide moves thegiftboxx.com from WordPress to the new hand-coded store **without downtime and without losing Google rankings**. Take it one step at a time. Everything happens in **Hostinger hPanel**; you don't need to touch GoDaddy, because your domain already points to Hostinger.
 
 **Time needed:** about 1 hour.

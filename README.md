@@ -5,7 +5,8 @@ A hand-coded storefront and admin dashboard for **thegiftboxx.com**. It replaces
 - **Shop:** `thegiftboxx.com`. It's premium and responsive, installable as an app, and SEO-ready.
 - **Admin:** `admin.thegiftboxx.com`. It has an Apple-style interface, light and dark mode, and works on phone, tablet and desktop.
 
-➡️ **Going live:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+➡️ **Test on new.thegiftboxx.com first:** [docs/STAGING.md](docs/STAGING.md)
+➡️ **Going live directly:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 ➡️ **Connecting PayU, Cashfree, Shiprocket, Google, Meta and Pinterest:** [docs/CONNECT-SERVICES.md](docs/CONNECT-SERVICES.md)
 
 ## What's included
