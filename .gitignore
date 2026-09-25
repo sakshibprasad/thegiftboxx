@@ -1,0 +1,12 @@
+# Private settings & data — never commit
+app/config.php
+admin/app-path.php
+storage/*
+!storage/.gitkeep
+!storage/.htaccess
+public/uploads/*
+!public/uploads/.htaccess
+.DS_Store
+*.zip
+node_modules/
+dist/

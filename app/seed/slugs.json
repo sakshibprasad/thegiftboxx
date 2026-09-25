@@ -1,0 +1,16 @@
+{
+ "products": {
+  "2390": "valentines-gift-box-for-her",
+  "2311": "men-in-black-box",
+  "2202": "wellness-box-for-her",
+  "2167": "valentines-gift-box-for-him",
+  "2098": "birthday-box-for-him"
+ },
+ "categories": {
+  "Birthday Gift Boxes": "birthday-gift-boxes",
+  "Gift Boxes for Her": "gift-boxes-for-her",
+  "Gift Boxes for Him": "gift-boxes-for-him",
+  "Valentine’s Gift Boxes": "valentines-gift-boxes",
+  "Wellness Gift Boxes": "wellness-gift-boxes"
+ }
+}
