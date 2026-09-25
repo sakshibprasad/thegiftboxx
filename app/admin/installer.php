@@ -22,9 +22,35 @@ function install_defaults(): array
     ];
 }
 
+/** PHP extensions the store needs. Returns friendly error messages for anything missing. */
+function install_requirements(): array
+{
+    $missing = [];
+    foreach (['pdo_mysql' => 'pdo_mysql', 'curl' => 'curl', 'mbstring' => 'mbstring', 'dom' => 'dom', 'fileinfo' => 'fileinfo'] as $ext => $label) {
+        if (!extension_loaded($ext)) {
+            $missing[] = $label;
+        }
+    }
+    if (!function_exists('sodium_crypto_secretbox') && !function_exists('openssl_encrypt')) {
+        $missing[] = 'sodium (or openssl)';
+    }
+    $errors = [];
+    if (PHP_VERSION_ID < 80100) {
+        $errors[] = 'PHP ' . PHP_VERSION . ' is too old. In hPanel → Advanced → PHP Configuration choose PHP 8.2 or 8.3.';
+    }
+    if ($missing) {
+        $errors[] = 'Please turn on these PHP extensions in hPanel → Advanced → PHP Configuration → PHP extensions, then reload: ' . implode(', ', $missing) . '.';
+    }
+    if (!extension_loaded('gd')) {
+        $errors[] = 'Tip: turn on the “gd” PHP extension too, so product photos get fast, resized versions. (Not required.)';
+    }
+    return $errors;
+}
+
 function install_form(array $errors = [], array $values = []): void
 {
     start_session('tgb_admin');
+    $errors = $errors ?: install_requirements();
     $values = array_merge(install_defaults(), $values);
     $appWritable = is_writable(APP_DIR);
     echo render('admin/install', compact('errors', 'values', 'appWritable'));
@@ -35,7 +61,7 @@ function install_run(): void
     csrf_check();
     $v = array_map(fn($x) => is_string($x) ? trim($x) : $x, $_POST);
     $v += install_defaults();
-    $errors = [];
+    $errors = array_values(array_filter(install_requirements(), fn($e) => !str_starts_with($e, 'Tip:')));
     if (!filter_var($v['site_url'], FILTER_VALIDATE_URL)) $errors[] = 'Website address must look like https://thegiftboxx.com';
     if (!filter_var($v['admin_url'], FILTER_VALIDATE_URL)) $errors[] = 'Admin address must look like https://admin.thegiftboxx.com';
     if (!filter_var($v['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Enter your email address.';
@@ -72,7 +98,7 @@ function install_run(): void
         'admin_url' => rtrim((string) $v['admin_url'], '/'),
         'uploads_dir' => $uploads,
         'uploads_url' => rtrim((string) $v['site_url'], '/') . '/uploads',
-        'app_key' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
+        'app_key' => base64_encode(random_bytes(APP_KEY_BYTES)),
         'db' => $db,
         'debug' => false,
     ];
