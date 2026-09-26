@@ -43,6 +43,13 @@ function asset(string $path): string
 
 function redirect(string $to, int $code = 302): never
 {
+    // Admin forms are sent with fetch(); answering with JSON lets the page use
+    // location.replace(), so saving never adds an extra step to the Back button.
+    if (($_SERVER['HTTP_X_ADMIN_FETCH'] ?? '') === '1') {
+        header('Content-Type: application/json');
+        echo json_encode(['redirect' => $to]);
+        exit;
+    }
     header('Location: ' . $to, true, $code);
     exit;
 }

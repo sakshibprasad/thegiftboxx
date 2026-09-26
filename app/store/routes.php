@@ -129,10 +129,20 @@ function page_home(): void
         $featured = products_query(['limit' => 8, 'sort' => 'manual']);
     }
     $cats = array_values(array_filter(categories_all(), fn($c) => !$c['parent_id'] && $c['product_count'] > 0));
+    foreach ($cats as &$c) {
+        if (!$c['image']) {
+            $first = products_query(['category' => $c['slug'], 'limit' => 1]);
+            $c['cover'] = $first && $first[0]['image'] ? image_url($first[0]['image'], 'md') : null;
+        }
+    }
+    unset($c);
+    $boxTypes = box_types();
+    $reviews = all("SELECT r.*, p.name AS product_name, p.slug AS product_slug FROM reviews r LEFT JOIN products p ON p.id = r.product_id
+        WHERE r.status = 'approved' AND r.rating >= 4 ORDER BY r.created_at DESC LIMIT 6");
     $posts = setting_on('blog_enabled')
         ? all("SELECT * FROM posts WHERE status = 'published' AND published_at <= ? ORDER BY published_at DESC LIMIT 3", [now()]) : [];
     $faq = $home['faq'];
-    store_view('home', compact('home', 'featured', 'cats', 'posts') + ['bodyClass' => 'is-home'], [
+    store_view('home', compact('home', 'featured', 'cats', 'posts', 'boxTypes', 'reviews') + ['bodyClass' => 'is-home'], [
         'title' => setting('seo_home_title'),
         'raw_title' => true,
         'description' => setting('seo_home_description'),
@@ -159,7 +169,7 @@ function page_shop(): void
     $total = products_count($opts);
     store_view('shop', [
         'title' => 'All gift boxes',
-        'intro' => 'Every box is hand-packed in real wood and ready to gift. Filter by occasion or browse everything below.',
+        'intro' => 'Premium wooden gift boxes filled with branded favourites, ready to gift. Browse by occasion or see everything below.',
         'products' => $products, 'total' => $total, 'page' => $page, 'per' => $per, 'sort' => $sort,
         'cats' => categories_all(), 'current' => null,
     ], [
@@ -183,13 +193,13 @@ function page_category(string $slug): void
         'title' => $cat['name'], 'intro' => $cat['description'], 'category' => $cat,
         'products' => products_query($opts), 'total' => products_count($opts), 'page' => $page, 'per' => $per,
         'sort' => $sort, 'cats' => categories_all(), 'current' => $slug,
-    ], [
+    ], seo_apply($cat, [
         'title' => $cat['seo_title'] ?: $cat['name'] . ' – Premium Gift Hampers',
         'description' => $cat['seo_description'] ?: ($cat['description'] ?: 'Shop ' . $cat['name'] . ' at ' . setting('store_name') . '. Curated gift hampers in wooden boxes, delivered across India.'),
         'image' => $cat['image'] ? image_url($cat['image'], 'lg') : null,
         'canonical' => site_url(category_url($cat)) . ($page > 1 ? '?page=' . $page : ''),
         'jsonld' => [breadcrumb_jsonld([['Home', '/'], ['Shop', '/shop/'], [$cat['name'], category_url($cat)]])],
-    ]);
+    ]));
 }
 
 function page_search(): void
@@ -207,9 +217,17 @@ function page_search(): void
 function page_product(string $slug): void
 {
     $row = one("SELECT * FROM products WHERE slug = ? AND status = 'published'", [$slug]);
+    $preview = false;
+    if (!$row && admin_preview_allowed()) {
+        $row = one('SELECT * FROM products WHERE slug = ?', [$slug]);
+        $preview = (bool) $row;
+    }
     if (!$row) {
         page_not_found();
         return;
+    }
+    if ($preview) {
+        flash('success', 'Preview of a draft — only people with this link can see it.');
     }
     q('UPDATE products SET views = views + 1 WHERE id = ?', [$row['id']]);
     $p = product_full($row);
@@ -256,15 +274,15 @@ function page_product(string $slug): void
         'crumbs' => $crumbs, 'inWishlist' => in_array((int) $p['id'], wishlist_ids(), true),
         'bodyClass' => 'is-product' . ($style ? ' has-wood' : ''), 'bodyStyle' => $style,
         'customColor' => (bool) $p['page_bg_color'],
-    ], [
+    ], seo_apply($p, [
         'title' => $p['seo_title'] ?: $p['name'],
         'description' => $p['seo_description'] ?: str_limit((string) ($p['short_description'] ?: $p['description']), 158),
         'image' => $p['images'] ? image_url($p['images'][0]['path'], 'lg') : null,
         'type' => 'product',
         'price' => $p['pricing']['min'],
         'canonical' => site_url(product_url($p)),
-        'jsonld' => [product_jsonld($p, $reviews), breadcrumb_jsonld($crumbs)],
-    ]);
+        'jsonld' => array_values(array_filter([$p['schema_type'] === 'none' ? null : product_jsonld($p, $reviews), breadcrumb_jsonld($crumbs)])),
+    ]));
 }
 
 function action_review(string $slug): void
@@ -284,8 +302,9 @@ function action_review(string $slug): void
         redirect(product_url($p) . '#reviews');
     }
     insert('reviews', ['product_id' => $p['id'], 'user_id' => customer()['id'] ?? null, 'name' => $name, 'email' => strtolower($email),
-        'rating' => $rating, 'body' => $body, 'status' => 'pending', 'created_at' => now()]);
-    flash('success', 'Thank you! Your review will appear once we’ve had a look at it.');
+        'rating' => $rating, 'body' => $body, 'status' => setting_on('reviews_auto_approve') ? 'approved' : 'pending', 'created_at' => now()]);
+    product_rating_refresh((int) $p['id']);
+    flash('success', setting_on('reviews_auto_approve') ? 'Thank you! Your review is now live.' : 'Thank you! Your review will appear once we’ve had a look at it.');
     redirect(product_url($p) . '#reviews');
 }
 
@@ -401,6 +420,15 @@ function page_checkout(): void
         flash('error', (string) setting('checkout_disabled_text'));
         redirect('/cart/');
     }
+    if (!setting_on('guest_checkout') && !customer()) {
+        flash('error', 'Please sign in or create an account to check out.');
+        redirect('/my-account/?next=/checkout/');
+    }
+    $minOrder = (float) setting('min_order_amount');
+    if ($minOrder > 0 && cart_totals(cart_lines())['subtotal'] < $minOrder) {
+        flash('error', 'The minimum order value is ' . money($minOrder) . '.');
+        redirect('/cart/');
+    }
     if (!$lines) {
         redirect('/cart/');
     }
@@ -451,7 +479,8 @@ function action_checkout(): void
     }
     if ($f['delivery_date'] !== '') {
         $min = date('Y-m-d', strtotime('+' . (int) setting('delivery_min_days') . ' days'));
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $f['delivery_date']) || $f['delivery_date'] < $min) {
+        $max = date('Y-m-d', strtotime('+' . max((int) setting('delivery_min_days') + 1, (int) setting('delivery_max_days')) . ' days'));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $f['delivery_date']) || $f['delivery_date'] < $min || $f['delivery_date'] > $max) {
             $errors[] = 'The earliest delivery date we can promise is ' . nice_date($min) . '.';
         }
     }
@@ -944,14 +973,15 @@ function page_post(string $slug): void
     }
     $more = all("SELECT * FROM posts WHERE status = 'published' AND id <> ? AND published_at <= ? ORDER BY published_at DESC LIMIT 3", [$post['id'], now()]);
     $products = products_query(['featured' => true, 'limit' => 3]);
-    store_view('post', compact('post', 'more', 'products'), [
+    $schema = $post['schema_type'] ?: 'BlogPosting';
+    store_view('post', compact('post', 'more', 'products'), seo_apply($post, [
         'title' => $post['seo_title'] ?: $post['title'],
         'description' => $post['seo_description'] ?: ($post['excerpt'] ?: str_limit((string) $post['content'], 158)),
         'image' => $post['cover_image'] ? image_url($post['cover_image'], 'lg') : null,
         'type' => 'article',
         'noindex' => $post['status'] !== 'published',
-        'jsonld' => [[
-            '@context' => 'https://schema.org', '@type' => 'BlogPosting', 'headline' => $post['title'],
+        'jsonld' => [$schema === 'none' ? null : [
+            '@context' => 'https://schema.org', '@type' => $schema, 'headline' => $post['title'],
             'datePublished' => date('c', strtotime((string) ($post['published_at'] ?: $post['created_at']))),
             'dateModified' => date('c', strtotime($post['updated_at'])),
             'author' => ['@type' => 'Person', 'name' => $post['author'] ?: setting('store_name')],
@@ -959,7 +989,7 @@ function page_post(string $slug): void
             'image' => $post['cover_image'] ? image_url($post['cover_image'], 'lg') : null,
             'mainEntityOfPage' => site_url('blog/' . $post['slug'] . '/'),
         ], breadcrumb_jsonld([['Home', '/'], ['Blog', '/blog/'], [$post['title'], '/blog/' . $post['slug'] . '/']])],
-    ]);
+    ]));
 }
 
 /** Admins can preview draft posts/pages by adding ?preview=<token> (token shown in admin). */
@@ -973,16 +1003,23 @@ function admin_preview_allowed(): bool
 
 function page_cms(string $slug): void
 {
-    $page = one("SELECT * FROM pages WHERE slug = ? AND status = 'published'", [$slug]);
+    $page = one("SELECT * FROM pages WHERE slug = ? AND status = 'published'", [$slug])
+        ?? (admin_preview_allowed() ? one('SELECT * FROM pages WHERE slug = ?', [$slug]) : null);
     if (!$page) {
         page_not_found();
         return;
     }
-    store_view('page', ['page' => $page, 'isAbout' => $slug === 'about'], [
+    $schema = $page['schema_type'] ?: ($slug === 'about' ? 'AboutPage' : 'WebPage');
+    $desc = $page['seo_description'] ?: str_limit(trim(strip_tags((string) $page['content'])), 158);
+    store_view('page', ['page' => $page, 'isAbout' => $slug === 'about'], seo_apply($page, [
         'title' => $page['seo_title'] ?: $page['title'],
-        'description' => $page['seo_description'] ?: str_limit((string) $page['content'], 158),
-        'jsonld' => [breadcrumb_jsonld([['Home', '/'], [$page['title'], '/' . $slug . '/']])],
-    ]);
+        'description' => $desc,
+        'noindex' => $page['status'] !== 'published',
+        'jsonld' => array_values(array_filter([
+            $schema === 'none' ? null : ['@context' => 'https://schema.org', '@type' => $schema, 'name' => $page['seo_title'] ?: $page['title'], 'description' => $desc, 'url' => site_url($slug . '/')],
+            breadcrumb_jsonld([['Home', '/'], [$page['title'], '/' . $slug . '/']]),
+        ])),
+    ]));
 }
 
 /* ---------------- Machine-readable files ---------------- */

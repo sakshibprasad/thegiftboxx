@@ -71,6 +71,7 @@ function admin_order_status(string $id): void
 {
     $o = order_find((int) $id);
     if ($o) {
+        history_log('update', 'order', (int) $o['id'], 'Order ' . $o['number'] . ': ' . order_status_label($o['status']) . ' → ' . order_status_label((string) input('status')), null, false);
         order_set_status($o, (string) input('status'), (bool) input('notify'));
         flash('success', 'Order marked as ' . strtolower(order_status_label((string) input('status'))) . (input('notify') ? ' and the customer was emailed.' : '.'));
     }
@@ -245,13 +246,16 @@ function admin_coupon_save(): void
         'expires_at' => input('expires_at') ? date('Y-m-d 23:59:59', strtotime((string) input('expires_at'))) : null,
         'active' => input('active') ? 1 : 0,
     ];
-    $id ? update('coupons', $data, 'id = ?', [$id]) : insert('coupons', $data + ['created_at' => now()]);
+    history_track('coupon', $id, $id ? 'update' : 'create', ($id ? 'Edited' : 'Added') . " coupon {$code}",
+        fn() => $id ? update('coupons', $data, 'id = ?', [$id]) : insert('coupons', $data + ['created_at' => now()]));
     flash('success', "Coupon {$code} saved.");
     redirect('/coupons');
 }
 
 function admin_coupon_delete(string $id): void
 {
+    $before = history_snapshot('coupon', (int) $id);
+    history_log('delete', 'coupon', (int) $id, 'Deleted coupon ' . ($before['row']['code'] ?? ''), $before);
     q('DELETE FROM coupons WHERE id = ?', [(int) $id]);
     redirect('/coupons');
 }

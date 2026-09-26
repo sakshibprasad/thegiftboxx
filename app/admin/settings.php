@@ -31,7 +31,15 @@ function admin_settings_save(string $group): void
     if (!isset($schema[$group])) {
         redirect('/settings');
     }
-    foreach ($schema[$group]['fields'] as $key => $f) {
+    $fields = $schema[$group]['fields'];
+    // Setup wizards save only the fields they show.
+    if (!empty($_POST['_only'])) {
+        $only = array_filter(explode(',', (string) $_POST['_only']));
+        $fields = array_intersect_key($fields, array_flip($only));
+    }
+    history_log('update', 'settings', implode(',', array_keys($fields)), $schema[$group]['label'] . ' settings changed',
+        history_snapshot('settings', implode(',', array_keys($fields))));
+    foreach ($fields as $key => $f) {
         $val = $_POST[$key] ?? null;
         switch ($f['type']) {
             case 'bool':
@@ -64,7 +72,7 @@ function admin_settings_save(string $group): void
                 setting_set($key, preg_match('#^[\w/.-]*$#', (string) $val) ? (string) $val : '');
                 break;
             default:
-                setting_set($key, trim((string) $val));
+                setting_set($key, setting_extract($key, (string) $val));
         }
     }
     if ($group === 'shipping') {
@@ -76,6 +84,9 @@ function admin_settings_save(string $group): void
         }
         flash('success', 'Appearance reset to the original Gift Boxx look.');
         redirect('/settings/appearance');
+    }
+    if (!empty($_POST['_only'])) {
+        json_out(['ok' => true]);
     }
     flash('success', $schema[$group]['label'] . ' settings saved.');
     redirect('/settings/' . $group);

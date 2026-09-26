@@ -1,11 +1,16 @@
 <?php /** @var string $group @var array $schema @var array $def @var string $cronUrl @var string $previewUrl */
 $tests = ['payments' => [['/settings-test/payu', 'Test PayU'], ['/settings-test/cashfree', 'Test Cashfree']], 'shipping' => [['/settings-test/shiprocket', 'Test Shiprocket']], 'email' => [['/settings-test/email', 'Send test email']]];
+$guides = ['payments' => ['payu' => 'PayU', 'cashfree' => 'Cashfree'], 'shipping' => ['shiprocket' => 'Shiprocket'], 'email' => ['email' => 'Order emails', 'cron' => 'Scheduled tasks'],
+    'integrations' => ['ga4' => 'Analytics', 'gsc' => 'Search Console', 'gads' => 'Google Ads', 'gmc' => 'Merchant Center', 'meta' => 'Meta', 'pinterest' => 'Pinterest', 'whatsapp' => 'WhatsApp', 'code' => 'Header code'], 'website' => ['seo' => 'SEO basics']];
 $sections = [
     'payments' => ['payu_' => 'PayU', 'cashfree_' => 'Cashfree', 'cod_' => 'Cash on Delivery'],
     'shipping' => ['shipping_' => 'Delivery charges', 'delivery_' => 'Checkout', 'gift_' => 'Checkout', 'shiprocket_' => 'Shiprocket', 'pincode_' => 'Product page'],
-    'integrations' => ['ga4_' => 'Google', 'gsc_' => 'Google', 'gtm_' => 'Google', 'gads_' => 'Google', 'gmc_' => 'Google', 'meta_' => 'Meta (Facebook & Instagram)', 'pinterest_' => 'Pinterest', 'bing_' => 'Bing', 'whatsapp_' => 'WhatsApp', 'header_' => 'Custom code', 'footer_' => 'Custom code'],
+    'integrations' => ['ga4_' => 'Google', 'gsc_' => 'Google', 'gtm_' => 'Google', 'gads_' => 'Google', 'gmc_' => 'Google', 'meta_' => 'Meta (Facebook & Instagram)', 'pinterest_' => 'Pinterest', 'bing_' => 'Bing', 'whatsapp_' => 'WhatsApp', 'header_' => 'Header & footer code', 'footer_' => 'Header & footer code'],
     'email' => ['smtp_' => 'Outgoing email (SMTP)', 'mail_' => 'Outgoing email (SMTP)', 'abandoned_' => 'Abandoned cart reminders'],
-    'website' => ['maintenance_' => 'Maintenance mode', 'checkout_' => 'Holiday mode', 'logo_' => 'Branding', 'og_' => 'Branding', 'seo_' => 'Google (SEO)', 'noindex_' => 'Google (SEO)', 'blog_' => 'Features', 'reviews_' => 'Features', 'wishlist_' => 'Features', 'cookie_' => 'Features'],
+    'website' => ['maintenance_' => 'Maintenance mode', 'checkout_' => 'Holiday mode', 'logo_' => 'Branding', 'og_' => 'Branding', 'favicon' => 'Branding', 'footer_' => 'Footer',
+        'seo_' => 'Google (SEO)', 'noindex_' => 'Google (SEO)', 'min_order' => 'Checkout', 'guest_' => 'Checkout', 'search_' => 'Features', 'product_' => 'Features', 'related_' => 'Features',
+        'blog_' => 'Features', 'reviews_' => 'Features', 'wishlist_' => 'Features', 'whatsapp_' => 'Features', 'cookie_' => 'Features'],
+    'store' => ['store_' => 'Business details', 'order_' => 'Business details', 'announcement' => 'Announcement bar', 'instagram_' => 'Social links', 'facebook_' => 'Social links', 'youtube_' => 'Social links', 'pinterest_' => 'Social links', 'linkedin_' => 'Social links'],
     'appearance' => ['theme_' => 'Your shop', 'admin_' => 'This admin'],
 ];
 $sectionOf = function (string $key) use ($sections, $group): string {
@@ -23,8 +28,15 @@ $sectionOf = function (string $key) use ($sections, $group): string {
 <div class="grid <?= $group === 'appearance' ? 'g-main' : '' ?>">
 <form method="post" action="/settings/<?= e($group) ?>" data-savebar style="max-width:<?= $group === 'appearance' ? 'none' : '760px' ?>">
     <?= csrf_field() ?>
+    <?php if (!empty($guides[$group])): ?>
+        <div class="guide-strip"><span><?= icon('wand') ?> Prefer step-by-step?</span><?php foreach ($guides[$group] as $k => $l): ?><a class="chip" href="/setup#<?= $k ?>"><?= e($l) ?></a><?php endforeach; ?></div>
+    <?php endif; ?>
     <?php $last = null; $open = false;
-    foreach ($def['fields'] as $key => $f):
+    // Keep fields of the same section together (in order of first appearance).
+    $ordered = [];
+    foreach ($def['fields'] as $key => $f) { $ordered[$sectionOf($key)][$key] = $f; }
+    $ordered = array_merge(...array_values($ordered));
+    foreach ($ordered as $key => $f):
         $sec = $sectionOf($key);
         if ($sec !== $last) { if ($open) echo '</div>'; echo '<p class="group-title">' . e($sec ?: $def['label']) . '</p><div class="group stack-fields-auto">'; $open = true; $last = $sec; }
         $val = setting($key);
@@ -72,7 +84,7 @@ $sectionOf = function (string $key) use ($sections, $group): string {
             <div style="padding:22px 18px">
                 <p style="color:var(--p-accent);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin:0 0 8px">Premium gift hampers</p>
                 <h2 style="font-family:var(--p-head);font-weight:500;font-size:30px;line-height:1.05;margin:0 0 10px">Gifts that feel personal</h2>
-                <p style="opacity:.7;font-size:14px">Hand-picked hampers in real wooden boxes.</p>
+                <p style="opacity:.7;font-size:14px">Premium wooden gift boxes, curated with love.</p>
                 <div style="display:flex;gap:10px;margin:16px 0"><span style="background:var(--p-dark);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px">Explore gift boxes</span><span style="border:1px solid rgba(0,0,0,.15);padding:10px 18px;border-radius:999px;font-size:13px">Design your own</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                     <?php foreach ([0, 1] as $i): ?><div style="background:var(--p-surface);border-radius:var(--p-radius);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)"><img src="<?= e(site_url('assets/img/' . ($i ? 'hero-2.jpg' : 'hero.jpg'))) ?>" alt="" style="aspect-ratio:4/5;object-fit:cover;width:100%"><div style="padding:10px;font-size:13px">Gift box for her<br><strong>₹4,999</strong></div></div><?php endforeach; ?>

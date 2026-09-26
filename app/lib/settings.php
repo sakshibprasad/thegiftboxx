@@ -23,7 +23,10 @@ function settings_schema(): array
                 'order_prefix' => ['label' => 'Order number prefix', 'type' => 'text', 'default' => 'TGB'],
                 'instagram_url' => ['label' => 'Instagram URL', 'type' => 'text', 'default' => ''],
                 'facebook_url' => ['label' => 'Facebook URL', 'type' => 'text', 'default' => ''],
-                'announcement' => ['label' => 'Announcement bar text (leave empty to hide)', 'type' => 'text', 'default' => 'Free delivery across India on orders above ₹2,999'],
+                'announcement' => ['label' => 'Announcement bar text (leave empty to hide)', 'type' => 'text', 'default' => 'Premium gift boxes, curated with love and delivered across India'],
+                'youtube_url' => ['label' => 'YouTube URL', 'type' => 'text', 'default' => ''],
+                'pinterest_url' => ['label' => 'Pinterest URL', 'type' => 'text', 'default' => ''],
+                'linkedin_url' => ['label' => 'LinkedIn URL', 'type' => 'text', 'default' => ''],
             ],
         ],
         'website' => [
@@ -41,6 +44,19 @@ function settings_schema(): array
                 'seo_home_title' => ['label' => 'Homepage title for Google', 'type' => 'text', 'default' => 'Premium Gift Hampers & Wooden Gift Boxes in India | The Gift Boxx'],
                 'seo_home_description' => ['label' => 'Homepage description for Google', 'type' => 'textarea', 'default' => 'Curated premium gift hampers in reusable wooden boxes. Birthday, Valentine’s, wedding, wellness and corporate gift boxes, delivered ready to gift across India.'],
                 'noindex_site' => ['label' => 'Hide the whole site from Google (only for testing!)', 'type' => 'bool', 'default' => '0'],
+                'favicon' => ['label' => 'Browser tab icon (square PNG, 512×512)', 'type' => 'image'],
+                'footer_statement' => ['label' => 'Footer headline', 'type' => 'text', 'default' => 'Gifts they’ll keep.'],
+                'footer_text' => ['label' => 'Footer line under the headline', 'type' => 'text', 'default' => 'Tell us who it’s for. We’ll take care of everything else.'],
+                'footer_image' => ['label' => 'Footer photo', 'type' => 'image', 'help' => 'Shown beside the footer headline, softly fading into it. Empty = your homepage photo.'],
+                'footer_tagline' => ['label' => 'Footer text under the logo', 'type' => 'textarea', 'default' => 'Premium gift hampers in wooden boxes. Curated with love, delivered across India.'],
+                'seo_separator' => ['label' => 'Separator in page titles', 'type' => 'select', 'options' => ['|' => 'Page | The Gift Boxx', '–' => 'Page – The Gift Boxx', '·' => 'Page · The Gift Boxx'], 'default' => '|'],
+                'min_order_amount' => ['label' => 'Minimum order value (₹, 0 = none)', 'type' => 'number', 'default' => '0'],
+                'guest_checkout' => ['label' => 'Allow checkout without an account', 'type' => 'bool', 'default' => '1'],
+                'search_enabled' => ['label' => 'Show search', 'type' => 'bool', 'default' => '1'],
+                'product_whatsapp' => ['label' => 'Show “Chat on WhatsApp” on product pages', 'type' => 'bool', 'default' => '1'],
+                'related_enabled' => ['label' => 'Show “You may also like” on product pages', 'type' => 'bool', 'default' => '1'],
+                'reviews_auto_approve' => ['label' => 'Publish new reviews without approval', 'type' => 'bool', 'default' => '0'],
+                'whatsapp_float' => ['label' => 'Show floating WhatsApp button', 'type' => 'bool', 'default' => '1'],
                 'blog_enabled' => ['label' => 'Show the Blog on the website (menu, /blog/ and sitemap)', 'type' => 'bool', 'default' => '0'],
                 'reviews_enabled' => ['label' => 'Allow customers to write reviews', 'type' => 'bool', 'default' => '1'],
                 'wishlist_enabled' => ['label' => 'Show wishlist hearts', 'type' => 'bool', 'default' => '1'],
@@ -60,6 +76,7 @@ function settings_schema(): array
                 'theme_body_font' => ['label' => 'Body font', 'type' => 'select', 'options' => 'body_fonts', 'default' => 'Inter'],
                 'theme_radius' => ['label' => 'Corner rounding', 'type' => 'select', 'options' => ['0' => 'Sharp', '8' => 'Subtle', '16' => 'Soft (Apple-like)', '28' => 'Extra round'], 'default' => '16'],
                 'admin_accent' => ['label' => 'Admin accent colour', 'type' => 'color', 'default' => '#0A84FF'],
+                'admin_toggle' => ['label' => 'Admin switch colour (when on)', 'type' => 'color', 'default' => '#BAA183'],
                 'admin_theme' => ['label' => 'Admin appearance', 'type' => 'select', 'options' => ['auto' => 'Match device (light/dark)', 'light' => 'Light', 'dark' => 'Dark'], 'default' => 'auto'],
             ],
         ],
@@ -87,8 +104,9 @@ function settings_schema(): array
             'icon' => 'truck',
             'fields' => [
                 'shipping_flat' => ['label' => 'Flat shipping charge (₹)', 'type' => 'number', 'default' => '99'],
-                'shipping_free_above' => ['label' => 'Free shipping above (₹, 0 = always charge)', 'type' => 'number', 'default' => '2999'],
-                'shipping_eta' => ['label' => 'Delivery time text', 'type' => 'text', 'default' => 'Ships in 2–3 days · Delivered in 4–7 days'],
+                'shipping_free_above' => ['label' => 'Free shipping above (₹, 0 = always charge)', 'type' => 'number', 'default' => '10000'],
+                'shipping_free_highlight' => ['label' => 'Mention free delivery on the website (cart progress bar, product page)', 'type' => 'bool', 'default' => '0'],
+                'shipping_eta' => ['label' => 'Delivery time text', 'type' => 'text', 'default' => 'Packed to order · Delivered across India in 5–7 days'],
                 'shiprocket_enabled' => ['label' => 'Enable Shiprocket', 'type' => 'bool', 'default' => '0'],
                 'shiprocket_email' => ['label' => 'Shiprocket API user email', 'type' => 'text', 'help' => 'Shiprocket → Settings → API → Configure → Create API User'],
                 'shiprocket_password' => ['label' => 'Shiprocket API user password', 'type' => 'secret'],
@@ -96,7 +114,8 @@ function settings_schema(): array
                 'shiprocket_pickup_pincode' => ['label' => 'Pickup pincode', 'type' => 'text', 'default' => '410206'],
                 'shiprocket_auto' => ['label' => 'Send paid orders to Shiprocket automatically', 'type' => 'bool', 'default' => '0'],
                 'delivery_date_enabled' => ['label' => 'Ask for preferred delivery date at checkout', 'type' => 'bool', 'default' => '1'],
-                'delivery_min_days' => ['label' => 'Earliest delivery date = today + (days)', 'type' => 'number', 'default' => '5'],
+                'delivery_min_days' => ['label' => 'First delivery date customers can pick = today + this many days (7 = the next 6 days are blocked)', 'type' => 'number', 'default' => '7'],
+                'delivery_max_days' => ['label' => 'Latest delivery date customers can pick = today + (days)', 'type' => 'number', 'default' => '60'],
                 'gift_message_enabled' => ['label' => 'Show gift message card field at checkout', 'type' => 'bool', 'default' => '1'],
                 'pincode_check' => ['label' => 'Show pincode delivery check on product pages', 'type' => 'bool', 'default' => '1'],
             ],
@@ -105,22 +124,22 @@ function settings_schema(): array
             'label' => 'Google, Meta & more',
             'icon' => 'plug',
             'fields' => [
-                'ga4_id' => ['label' => 'Google Analytics 4 Measurement ID', 'type' => 'text', 'placeholder' => 'G-XXXXXXXXXX', 'help' => 'Analytics → Admin → Data streams → your site'],
-                'gsc_verification' => ['label' => 'Google Search Console verification code', 'type' => 'text', 'placeholder' => 'content value of the google-site-verification meta tag'],
+                'ga4_id' => ['label' => 'Google Analytics 4 Measurement ID', 'type' => 'text', 'placeholder' => 'G-XXXXXXXXXX', 'help' => 'Analytics → Admin → Data streams → your site. You can also paste the whole Google tag code.'],
+                'gsc_verification' => ['label' => 'Google site verification (Search Console)', 'type' => 'text', 'placeholder' => '<meta name="google-site-verification" content="…">', 'help' => 'Paste the whole meta tag Google gives you, or just the code inside content="…". It’s added to the <head> of every page.'],
                 'gtm_id' => ['label' => 'Google Tag Manager ID (optional)', 'type' => 'text', 'placeholder' => 'GTM-XXXXXXX'],
                 'gads_id' => ['label' => 'Google Ads Conversion ID', 'type' => 'text', 'placeholder' => 'AW-123456789'],
                 'gads_label' => ['label' => 'Google Ads Purchase conversion label', 'type' => 'text', 'placeholder' => 'AbCdEfGhIjk'],
                 'gmc_id' => ['label' => 'Google Merchant Center ID', 'type' => 'text', 'help' => 'Add the product feed URL shown below in Merchant Center → Products → Feeds'],
-                'meta_pixel_id' => ['label' => 'Meta (Facebook) Pixel ID', 'type' => 'text'],
+                'meta_pixel_id' => ['label' => 'Meta (Facebook) Pixel', 'type' => 'text', 'placeholder' => '123456789012345', 'help' => 'Paste the Pixel ID or the whole Pixel code from Events Manager — the ID is picked out and the Pixel is added to the <head> with purchase tracking. Don’t also paste it under Custom code.'],
                 'meta_capi_token' => ['label' => 'Meta Conversions API access token', 'type' => 'secret', 'help' => 'Events Manager → your pixel → Settings → Conversions API → Generate access token'],
-                'meta_domain_verification' => ['label' => 'Meta domain verification code', 'type' => 'text'],
+                'meta_domain_verification' => ['label' => 'Meta domain verification', 'type' => 'text', 'placeholder' => '<meta name="facebook-domain-verification" content="…">', 'help' => 'Paste the whole meta tag or just the code.'],
                 'pinterest_tag_id' => ['label' => 'Pinterest Tag ID', 'type' => 'text', 'help' => 'Pinterest Business → Ads → Conversions → Pinterest Tag'],
-                'pinterest_verification' => ['label' => 'Pinterest site verification code', 'type' => 'text', 'placeholder' => 'content value of the p:domain_verify meta tag'],
-                'bing_verification' => ['label' => 'Bing Webmaster verification code', 'type' => 'text'],
+                'pinterest_verification' => ['label' => 'Pinterest site verification', 'type' => 'text', 'placeholder' => '<meta name="p:domain_verify" content="…">', 'help' => 'Paste the whole meta tag or just the code.'],
+                'bing_verification' => ['label' => 'Bing site verification', 'type' => 'text', 'placeholder' => '<meta name="msvalidate.01" content="…">', 'help' => 'Paste the whole meta tag or just the code.'],
                 'whatsapp_number' => ['label' => 'WhatsApp number (with country code, digits only)', 'type' => 'text', 'default' => '917710970512'],
                 'whatsapp_message' => ['label' => 'WhatsApp default message', 'type' => 'text', 'default' => 'Hi! I would like to know more about your gift boxes.'],
-                'header_code' => ['label' => 'Custom code in <head> (any extra tracking script)', 'type' => 'code'],
-                'footer_code' => ['label' => 'Custom code before </body>', 'type' => 'code'],
+                'header_code' => ['label' => 'Header code — added inside <head> on every page', 'type' => 'code', 'help' => 'For any other verification tag or tracking script (Microsoft Clarity, Hotjar, a second pixel…). Google, Meta, Pinterest and Bing have their own boxes above — use those instead so nothing loads twice.'],
+                'footer_code' => ['label' => 'Footer code — added just before </body>', 'type' => 'code', 'help' => 'For chat widgets and scripts that ask to go at the end of the page.'],
             ],
         ],
         'email' => [
@@ -221,4 +240,29 @@ function field_options(array $field): array
 {
     $o = $field['options'] ?? [];
     return is_string($o) ? font_options($o) : $o;
+}
+
+/**
+ * People often paste the whole snippet Google, Meta or Pinterest gives them
+ * (a <meta> tag or a <script>). Keep only the ID or code the store needs.
+ */
+function setting_extract(string $key, string $val): string
+{
+    $val = trim($val);
+    if ($val === '') {
+        return '';
+    }
+    $grab = fn(string $re) => preg_match($re, $val, $m) ? $m[1] : null;
+    $found = match ($key) {
+        'gsc_verification', 'bing_verification', 'meta_domain_verification', 'pinterest_verification'
+            => $grab('/content\s*=\s*["\']([^"\']+)["\']/i'),
+        'ga4_id' => $grab('/\b(G-[A-Z0-9]{4,})\b/i'),
+        'gtm_id' => $grab('/\b(GTM-[A-Z0-9]{4,})\b/i'),
+        'gads_id' => $grab('/\b(AW-\d{6,})\b/i'),
+        'gads_label' => $grab('/AW-\d+\/([\w-]+)/i'),
+        'meta_pixel_id' => $grab('/fbq\(\s*["\']init["\']\s*,\s*["\'](\d+)["\']/') ?? $grab('/facebook\.com\/tr\?id=(\d+)/') ?? $grab('/^\s*(\d{8,20})\s*$/'),
+        'pinterest_tag_id' => $grab('/pintrk\(\s*["\']load["\']\s*,\s*["\'](\d+)["\']/') ?? $grab('/^\s*(\d{8,20})\s*$/'),
+        default => null,
+    };
+    return $found !== null ? (in_array($key, ['ga4_id', 'gtm_id', 'gads_id'], true) ? strtoupper($found) : $found) : $val;
 }

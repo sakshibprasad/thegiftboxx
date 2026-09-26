@@ -24,13 +24,9 @@
         <div class="f">Cover image
             <div class="single-img" data-image-field><img class="preview" src="<?= e(image_url($e['image'], 'sm')) ?>" alt="" <?= $e['image'] ? '' : 'hidden' ?>><input type="hidden" name="image" value="<?= e($e['image']) ?>"><label class="btn secondary sm"><?= icon('image') ?> Choose<input type="file" accept="image/*" hidden></label><button type="button" class="btn danger sm" data-remove <?= $e['image'] ? '' : 'hidden' ?>>Remove</button></div>
         </div>
-        <details><summary class="small" style="cursor:pointer;color:var(--accent)">SEO &amp; URL</summary>
-            <div class="fields" style="margin-top:10px">
-                <label class="f">URL slug<input name="slug" value="<?= e($e['slug']) ?>"></label>
-                <label class="f">SEO title<input name="seo_title" value="<?= e($e['seo_title']) ?>" data-count="60"></label>
-                <label class="f">Meta description<textarea name="seo_description" rows="2" data-count="160"><?= e($e['seo_description']) ?></textarea></label>
-                <label class="f">Menu order<input type="number" name="sort_order" value="<?= (int) $e['sort_order'] ?>"></label>
-            </div>
+        <label class="f">Menu order<input type="number" name="sort_order" value="<?= (int) $e['sort_order'] ?>"></label>
+        <details class="seo-details"><summary>SEO, URL &amp; social sharing</summary>
+            <?= render('admin/seo-panel', ['row' => $e, 'kind' => 'category', 'base' => '/product-category/', 'nameField' => 'name', 'bodyField' => 'description', 'flat' => true]) ?>
         </details>
         <div style="display:flex;gap:8px;justify-content:space-between">
             <button class="btn">Save</button>

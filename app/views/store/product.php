@@ -120,8 +120,8 @@ $eta = setting('shipping_eta');
                 </form>
 
                 <ul class="perks">
-                    <li><?= icon('truck') ?><span><?= e($eta) ?><?php if ((float) setting('shipping_free_above') > 0): ?> · Free delivery above <?= money((float) setting('shipping_free_above')) ?><?php endif; ?></span></li>
-                    <li><?= icon('gift') ?><span>Gift-ready packing with a handwritten message card</span></li>
+                    <li><?= icon('truck') ?><span><?= e($eta) ?><?php if (setting_on('shipping_free_highlight') && (float) setting('shipping_free_above') > 0): ?> · Free delivery above <?= money((float) setting('shipping_free_above')) ?><?php endif; ?></span></li>
+                    <li><?= icon('gift') ?><span>Arrives gift-ready in a premium wooden box, with your personal message card</span></li>
                     <li><?= icon('shield') ?><span>Secure checkout with UPI, cards and netbanking</span></li>
                 </ul>
 
@@ -133,7 +133,7 @@ $eta = setting('shipping_eta');
                     </form>
                 <?php endif; ?>
 
-                <?php if ($wa = preg_replace('/\D/', '', (string) setting('whatsapp_number'))): ?>
+                <?php if (setting_on('product_whatsapp') && ($wa = preg_replace('/\D/', '', (string) setting('whatsapp_number')))): ?>
                     <a class="wa-inline" href="https://wa.me/<?= e($wa) ?>?text=<?= rawurlencode('Hi! I have a question about ' . $p['name'] . ' – ' . site_url(product_url($p))) ?>" target="_blank" rel="noopener"><?= icon('whatsapp') ?> Questions? Chat with us on WhatsApp</a>
                 <?php endif; ?>
             </div>
@@ -198,7 +198,7 @@ $eta = setting('shipping_eta');
     </div>
 </section>
 
-<?php if ($related): ?>
+<?php if ($related && setting_on('related_enabled')): ?>
 <section class="section">
     <div class="wrap">
         <div class="section-head"><h2>You may also like</h2></div>

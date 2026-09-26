@@ -30,6 +30,12 @@ function admin_homepage_save(): void
             $out['faq'][] = ['q' => trim((string) $qq), 'a' => trim((string) ($_POST['faq_a'][$i] ?? ''))];
         }
     }
+    // Only keep what differs from the built-in text, so improved defaults still reach untouched fields.
+    $out = array_filter($out, fn($v, $k) => array_key_exists($k, home_sections()) || $v !== $d[$k], ARRAY_FILTER_USE_BOTH);
+    history_log('update', 'settings', 'home_content', 'Edited the homepage', history_snapshot('settings', 'home_content'));
+    if (!empty($_POST['featured'])) {
+        history_log('update', 'featured', 'all', 'Changed homepage bestsellers', history_snapshot('featured', 'all'));
+    }
     setting_set('home_content', json_encode($out, JSON_UNESCAPED_UNICODE));
     foreach ((array) ($_POST['featured'] ?? []) as $pid => $on) {
         update('products', ['featured' => $on ? 1 : 0], 'id = ?', [(int) $pid]);
@@ -68,18 +74,17 @@ function admin_page_save(): void
     }
     $data = ['title' => $title, 'slug' => $slug, 'content' => clean_html((string) input('content')),
         'seo_title' => input('seo_title') ?: null, 'seo_description' => input('seo_description') ?: null,
-        'status' => input('status') === 'published' ? 'published' : 'draft', 'show_in_footer' => input('show_in_footer') ? 1 : 0, 'updated_at' => now()];
-    if ($id) {
-        update('pages', $data, 'id = ?', [$id]);
-    } else {
-        $id = insert('pages', $data);
-    }
+        'status' => input('status') === 'published' ? 'published' : 'draft', 'show_in_footer' => input('show_in_footer') ? 1 : 0, 'updated_at' => now()] + seo_input('page');
+    $id = (int) history_track('page', $id, $id ? 'update' : 'create', ($id ? 'Edited' : 'Added') . ' page “' . $title . '”',
+        fn() => $id ? (update('pages', $data, 'id = ?', [$id]) ? $id : $id) : insert('pages', $data)) ?: $id;
     flash('success', 'Page saved.');
     redirect('/pages/' . $id);
 }
 
 function admin_page_delete(string $id): void
 {
+    $before = history_snapshot('page', (int) $id);
+    history_log('delete', 'page', (int) $id, 'Deleted page “' . ($before['row']['title'] ?? '') . '”', $before);
     q('DELETE FROM pages WHERE id = ?', [(int) $id]);
     flash('success', 'Page deleted.');
     redirect('/pages');
@@ -116,18 +121,17 @@ function admin_post_save(): void
         'content' => clean_html((string) input('content')), 'cover_image' => input('cover_image') ?: null, 'author' => trim((string) input('author')),
         'tags' => trim((string) input('tags')), 'status' => $status, 'seo_title' => input('seo_title') ?: null,
         'seo_description' => input('seo_description') ?: null, 'focus_keyword' => input('focus_keyword') ?: null,
-        'published_at' => $published, 'updated_at' => now()];
-    if ($id) {
-        update('posts', $data, 'id = ?', [$id]);
-    } else {
-        $id = insert('posts', $data + ['created_at' => now()]);
-    }
+        'published_at' => $published, 'updated_at' => now()] + seo_input('post');
+    $id = (int) history_track('post', $id, $id ? 'update' : 'create', ($id ? 'Edited' : 'Added') . ' blog post “' . $title . '”',
+        fn() => $id ? (update('posts', $data, 'id = ?', [$id]) ? $id : $id) : insert('posts', $data + ['created_at' => now()])) ?: $id;
     flash('success', $status === 'published' ? (setting_on('blog_enabled') ? 'Post published.' : 'Post saved as published — it will appear once you turn on the blog in Settings → Website.') : 'Draft saved.');
     redirect('/blog/' . $id);
 }
 
 function admin_post_delete(string $id): void
 {
+    $before = history_snapshot('post', (int) $id);
+    history_log('delete', 'post', (int) $id, 'Deleted blog post “' . ($before['row']['title'] ?? '') . '”', $before);
     q('DELETE FROM posts WHERE id = ?', [(int) $id]);
     redirect('/blog');
 }
@@ -146,17 +150,17 @@ function admin_redirect_save(): void
     if ($from === '/' || $to === '') {
         field_error_redirect('Enter both the old path and the new address.', '/redirects');
     }
-    if ($r = one('SELECT id FROM redirects WHERE from_path = ?', [$from])) {
-        update('redirects', ['to_url' => $to], 'id = ?', [$r['id']]);
-    } else {
-        insert('redirects', ['from_path' => $from, 'to_url' => $to]);
-    }
+    $r = one('SELECT id FROM redirects WHERE from_path = ?', [$from]);
+    history_track('redirect', $r['id'] ?? null, $r ? 'update' : 'create', "Redirect {$from} → {$to}",
+        fn() => $r ? update('redirects', ['to_url' => $to], 'id = ?', [$r['id']]) : insert('redirects', ['from_path' => $from, 'to_url' => $to]));
     flash('success', 'Redirect saved.');
     redirect('/redirects');
 }
 
 function admin_redirect_delete(string $id): void
 {
+    $before = history_snapshot('redirect', (int) $id);
+    history_log('delete', 'redirect', (int) $id, 'Deleted redirect ' . ($before['row']['from_path'] ?? ''), $before);
     q('DELETE FROM redirects WHERE id = ?', [(int) $id]);
     redirect('/redirects');
 }

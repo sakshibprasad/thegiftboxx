@@ -22,7 +22,7 @@ ini_set('error_log', APP_ROOT . '/storage/logs/php-error.log');
 
 foreach ([
     'helpers', 'db', 'crypto', 'settings', 'sanitize', 'auth', 'images',
-    'catalog', 'cart', 'mailer', 'orders', 'seo', 'tracking', 'cron', 'icons', 'csv_import',
+    'catalog', 'cart', 'mailer', 'orders', 'seo', 'tracking', 'cron', 'icons', 'csv_import', 'migrations', 'history',
 ] as $lib) {
     require APP_DIR . "/lib/{$lib}.php";
 }

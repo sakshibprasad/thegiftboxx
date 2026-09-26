@@ -28,7 +28,7 @@ footer{margin-top:40px;font-size:11.5px;color:#6e6e73;text-align:center} @media 
 <?php if ((float) $o['fee'] > 0): ?><tr class="tot"><td colspan="3" class="r muted">COD fee</td><td class="r"><?= money($o['fee'], true) ?></td></tr><?php endif; ?>
 <tr class="grand"><td colspan="3" class="r">Total (incl. GST)</td><td class="r"><?= money($o['total'], true) ?></td></tr></tfoot><?php endif; ?>
 </table>
-<?php if ($slip && $o['gift_message']): ?><h3 style="margin-top:28px">Handwritten card</h3><div class="gift">“<?= e($o['gift_message']) ?>”</div><?php endif; ?>
+<?php if ($slip && $o['gift_message']): ?><h3 style="margin-top:28px">Gift message card</h3><div class="gift">“<?= e($o['gift_message']) ?>”</div><?php endif; ?>
 <?php if ($slip && $o['customer_note']): ?><p style="margin-top:18px"><strong>Note:</strong> <?= e($o['customer_note']) ?></p><?php endif; ?>
 <footer>Thank you for choosing <?= e(setting('store_name')) ?> · <?= e(parse_url(site_url(), PHP_URL_HOST)) ?></footer>
 </body></html>

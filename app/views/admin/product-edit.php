@@ -28,10 +28,10 @@ $varField = function (string $prefix, array $v) use ($dt): string {
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= e($p['id']) ?>">
     <div class="page-head">
-        <div><a class="back" href="/products"><?= icon('arrow-left') ?> Products</a><h1><?= $isNew ? 'New product' : e($p['name']) ?></h1></div>
+        <div><a class="back" href="/products"><?= icon('arrow-left') ?> Products</a><h1><?= $isNew ? 'New product' : e($p['name']) ?> <?php if (!$isNew && $p['status'] !== 'published'): ?><span class="badge b-draft">Draft · hidden from shop</span><?php elseif (!$isNew && $p['stock_status'] === 'outofstock'): ?><span class="badge b-outofstock">Sold out</span><?php endif; ?></h1></div>
         <div class="head-actions">
             <?php if (!$isNew): ?>
-                <a class="btn secondary" href="<?= e(site_url(product_url($p))) ?>" target="_blank" rel="noopener"><?= icon('eye') ?> View</a>
+                <a class="btn secondary" href="<?= e(site_url(product_url($p)) . ($p['status'] !== 'published' ? '?preview=' . preview_token() : '')) ?>" target="_blank" rel="noopener"><?= icon('eye') ?> <?= $p['status'] !== 'published' ? 'Preview' : 'View' ?></a>
                 <button class="btn secondary" form="dup-form"><?= icon('copy') ?> Duplicate</button>
             <?php endif; ?>
             <button class="btn" type="submit">Save</button>
@@ -166,22 +166,12 @@ $varField = function (string $prefix, array $v) use ($dt): string {
                 </div>
             </div>
 
-            <div class="card pad" id="previews" data-store="<?= e(setting('store_name')) ?>" data-site="<?= e(parse_url(site_url(), PHP_URL_HOST)) ?>" data-placeholder="<?= e(asset_placeholder()) ?>">
-                <h3>Search engine &amp; Google Shopping</h3>
-                <p class="help" style="margin-top:-6px">Leave empty to use the product name and short description. Write for people, not robots.</p>
-                <div class="fields">
-                    <label class="f">SEO title<input name="seo_title" value="<?= e($p['seo_title']) ?>" data-count="60" placeholder="<?= e($p['name'] ?: 'Valentine’s Gift Box for Her | Wooden Gift Hamper') ?>"></label>
-                    <label class="f">Meta description<textarea name="seo_description" rows="2" data-count="160" placeholder="A romantic gift box for her with chocolates, candles and keepsakes in a wooden box. Delivered across India."><?= e($p['seo_description']) ?></textarea></label>
-                    <div class="form-grid">
-                        <label class="f">Focus keyword <small>the phrase people search for</small><input name="focus_keyword" value="<?= e($p['focus_keyword']) ?>" placeholder="valentine gift hamper for her"></label>
-                        <label class="f">URL<input name="slug" value="<?= e($p['slug']) ?>" placeholder="valentines-gift-box-for-her"></label>
-                    </div>
-                </div>
-                <p class="group-title" style="margin:20px 0 8px">Preview</p>
-                <div class="grid" style="grid-template-columns:minmax(0,1fr) 200px;align-items:start">
-                    <div class="serp"><div class="site"><span class="fav"><img src="/assets/favicon.png" alt=""></span><span><?= e(setting('store_name')) ?><small></small></span></div><div class="t"></div><div class="meta-row"></div><div class="d"></div></div>
-                    <div class="shop-card"><img alt=""><div class="b"><div class="t"></div><div class="p"></div><div class="s"><?= e(parse_url(site_url(), PHP_URL_HOST)) ?></div><?php if ((float) setting('shipping_free_above') > 0): ?><div class="free">Free delivery above <?= money((float) setting('shipping_free_above')) ?></div><?php endif; ?></div></div>
-                </div>
+            <?= render('admin/seo-panel', ['row' => $p, 'kind' => 'product', 'base' => '/product/', 'nameField' => 'name', 'bodyField' => 'description']) ?>
+
+            <div class="card pad" id="previews" data-placeholder="<?= e(asset_placeholder()) ?>">
+                <h3>Google Shopping preview</h3>
+                <p class="help" style="margin-top:-6px">How this box can look in Google’s Shopping tab once Merchant Center is connected.</p>
+                <div class="shop-card"><img alt=""><div class="b"><div class="t"></div><div class="p"></div><div class="s"><?= e(parse_url(site_url(), PHP_URL_HOST)) ?></div><?php if (setting_on('shipping_free_highlight') && (float) setting('shipping_free_above') > 0): ?><div class="free">Free delivery above <?= money((float) setting('shipping_free_above')) ?></div><?php endif; ?></div></div>
             </div>
 
             <div class="card pad">

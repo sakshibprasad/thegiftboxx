@@ -112,6 +112,7 @@ function install_run(): void
         }
     }
     install_seed((string) $v['store_name']);
+    run_migrations();
     $email = strtolower((string) $v['email']);
     if ($existing = one('SELECT id FROM users WHERE email = ?', [$email])) {
         update('users', ['role' => 'admin', 'password_hash' => password_hash((string) $v['password'], PASSWORD_DEFAULT), 'name' => $v['name'] ?: 'Owner'], 'id = ?', [$existing['id']]);

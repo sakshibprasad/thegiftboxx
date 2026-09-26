@@ -9,7 +9,8 @@ $totals = cart_totals($lines);
         <a class="btn" href="/shop/">Find a gift</a>
     </div>
 <?php else: ?>
-    <?php if ($totals['free_shipping_gap'] > 0): ?>
+    <?php if (!setting_on('shipping_free_highlight')): ?>
+    <?php elseif ($totals['free_shipping_gap'] > 0): ?>
         <div class="ship-meter">
             <p>Add <strong><?= money($totals['free_shipping_gap']) ?></strong> more for free delivery</p>
             <div class="meter"><span style="width:<?= min(100, round(($totals['subtotal'] - $totals['discount']) / max(1, (float) setting('shipping_free_above')) * 100)) ?>%"></span></div>

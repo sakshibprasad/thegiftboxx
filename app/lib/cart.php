@@ -196,3 +196,10 @@ function abandoned_capture(string $email, string $name = '', string $phone = '')
         insert('abandoned_carts', $data + ['token' => $token, 'status' => 'open', 'created_at' => now()]);
     }
 }
+
+/** Show the coupon box only when there is at least one usable coupon. */
+function coupons_available(): bool
+{
+    static $any = null;
+    return $any ??= (bool) val('SELECT COUNT(*) FROM coupons WHERE active = 1 AND (expires_at IS NULL OR expires_at >= ?) AND (max_uses IS NULL OR used < max_uses)', [now()]);
+}

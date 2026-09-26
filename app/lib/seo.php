@@ -6,7 +6,7 @@ function meta_tags(array $m): string
     $store = setting('store_name');
     $title = $m['title'] ?? $store;
     if (empty($m['raw_title']) && !str_contains($title, $store)) {
-        $title .= ' | ' . $store;
+        $title .= ' ' . (setting('seo_separator') ?: '|') . ' ' . $store;
     }
     $desc = str_limit($m['description'] ?? setting('store_tagline'), 160);
     $canonical = $m['canonical'] ?? site_url(strtok($_SERVER['REQUEST_URI'] ?? '/', '?') ?: '/');
@@ -18,11 +18,25 @@ function meta_tags(array $m): string
     $out[] = '<title>' . e($title) . '</title>';
     $out[] = '<meta name="description" content="' . e($desc) . '">';
     $out[] = '<link rel="canonical" href="' . e($canonical) . '">';
-    $out[] = '<meta name="robots" content="' . (!empty($m['noindex']) ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1') . '">';
+    $flags = $m['robots'] ?? [];
+    if (!empty($m['noindex'])) {
+        $flags[] = 'noindex';
+    }
+    $robots = [in_array('noindex', $flags, true) ? 'noindex' : 'index', in_array('nofollow', $flags, true) ? 'nofollow' : 'follow'];
+    foreach (['noarchive', 'noimageindex', 'nosnippet'] as $f) {
+        if (in_array($f, $flags, true)) {
+            $robots[] = $f;
+        }
+    }
+    if ($robots[0] === 'index' && !in_array('nosnippet', $flags, true)) {
+        $robots[] = 'max-image-preview:large';
+        $robots[] = 'max-snippet:-1';
+    }
+    $out[] = '<meta name="robots" content="' . implode(', ', $robots) . '">';
     $out[] = '<meta property="og:site_name" content="' . e($store) . '">';
     $out[] = '<meta property="og:type" content="' . e($m['type'] ?? 'website') . '">';
-    $out[] = '<meta property="og:title" content="' . e($title) . '">';
-    $out[] = '<meta property="og:description" content="' . e($desc) . '">';
+    $out[] = '<meta property="og:title" content="' . e($m['og_title'] ?? $title) . '">';
+    $out[] = '<meta property="og:description" content="' . e($m['og_description'] ?? $desc) . '">';
     $out[] = '<meta property="og:url" content="' . e($canonical) . '">';
     $out[] = '<meta property="og:image" content="' . e($image) . '">';
     $out[] = '<meta property="og:locale" content="en_IN">';
@@ -37,7 +51,7 @@ function meta_tags(array $m): string
             $out[] = '<meta name="' . $name . '" content="' . e($v) . '">';
         }
     }
-    $schemas = array_merge([organization_jsonld()], $m['jsonld'] ?? []);
+    $schemas = array_filter(array_merge([organization_jsonld()], $m['jsonld'] ?? []));
     foreach ($schemas as $schema) {
         $out[] = '<script type="application/ld+json">' . json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>';
     }
@@ -114,18 +128,18 @@ function product_jsonld(array $p, array $reviews = []): array
 function sitemap_xml(): string
 {
     $urls = [[site_url(), null, '1.0'], [site_url('shop/'), null, '0.9']];
-    foreach (all("SELECT slug, updated_at FROM products WHERE status = 'published' ORDER BY updated_at DESC") as $p) {
+    foreach (all("SELECT slug, updated_at FROM products WHERE status = 'published' AND (robots IS NULL OR robots NOT LIKE '%noindex%') ORDER BY updated_at DESC") as $p) {
         $urls[] = [site_url('product/' . $p['slug'] . '/'), $p['updated_at'], '0.8'];
     }
-    foreach (all('SELECT slug FROM categories') as $c) {
+    foreach (all("SELECT slug FROM categories WHERE robots IS NULL OR robots NOT LIKE '%noindex%'") as $c) {
         $urls[] = [site_url('product-category/' . $c['slug'] . '/'), null, '0.7'];
     }
-    foreach (all("SELECT slug, updated_at FROM pages WHERE status = 'published'") as $pg) {
+    foreach (all("SELECT slug, updated_at FROM pages WHERE status = 'published' AND (robots IS NULL OR robots NOT LIKE '%noindex%')") as $pg) {
         $urls[] = [site_url($pg['slug'] . '/'), $pg['updated_at'], '0.5'];
     }
     if (setting_on('blog_enabled')) {
         $urls[] = [site_url('blog/'), null, '0.6'];
-        foreach (all("SELECT slug, updated_at FROM posts WHERE status = 'published' AND published_at <= ?", [now()]) as $post) {
+        foreach (all("SELECT slug, updated_at FROM posts WHERE status = 'published' AND (robots IS NULL OR robots NOT LIKE '%noindex%') AND published_at <= ?", [now()]) as $post) {
             $urls[] = [site_url('blog/' . $post['slug'] . '/'), $post['updated_at'], '0.6'];
         }
     }
@@ -165,7 +179,7 @@ function llms_txt(): string
         $out .= '- [' . $p['name'] . '](' . site_url(product_url($p)) . ') — ' . $price . ': ' . str_limit((string) $p['short_description'], 180) . "\n";
     }
     $out .= "\n## Services\n- [Corporate & bulk gifting](" . site_url('corporate-gifting/') . ")\n- [Design your own box (send us your idea)](" . site_url('custom-box/') . ")\n";
-    foreach (all("SELECT slug, title FROM pages WHERE status = 'published'") as $pg) {
+    foreach (all("SELECT slug, title FROM pages WHERE status = 'published' AND (robots IS NULL OR robots NOT LIKE '%noindex%')") as $pg) {
         $out .= '- [' . $pg['title'] . '](' . site_url($pg['slug'] . '/') . ")\n";
     }
     return $out;
@@ -256,4 +270,60 @@ function store_logo(bool $forDark = false, bool $absolute = false): string
     }
     $path = $forDark ? 'assets/img/logo-white.svg' : 'assets/img/logo-dark.svg';
     return $absolute ? site_url($path) : '/' . $path;
+}
+
+/* ---------------- Per-item SEO (the admin "SEO" panel) ---------------- */
+
+const SEO_ROBOTS = ['noindex' => 'No index', 'nofollow' => 'No follow', 'noarchive' => 'No archive', 'noimageindex' => 'No image index', 'nosnippet' => 'No snippet'];
+
+function seo_schema_types(string $kind): array
+{
+    return match ($kind) {
+        'product' => ['' => 'Product (recommended)', 'none' => 'None'],
+        'post' => ['' => 'Blog post (recommended)', 'Article' => 'Article', 'NewsArticle' => 'News article', 'none' => 'None'],
+        'category' => ['' => 'Collection page (recommended)', 'none' => 'None'],
+        default => ['' => 'Web page (recommended)', 'AboutPage' => 'About page', 'ContactPage' => 'Contact page', 'FAQPage' => 'FAQ page', 'none' => 'None'],
+    };
+}
+
+/** Read the SEO panel fields from the posted form. */
+function seo_input(string $kind): array
+{
+    $robots = array_values(array_intersect((array) ($_POST['robots'] ?? []), array_keys(SEO_ROBOTS)));
+    $canonical = trim((string) input('canonical_url'));
+    $schema = (string) input('schema_type');
+    return [
+        'focus_keyword' => trim((string) input('focus_keyword')) ?: null,
+        'secondary_keywords' => trim((string) input('secondary_keywords')) ?: null,
+        'og_title' => trim((string) input('og_title')) ?: null,
+        'og_description' => trim((string) input('og_description')) ?: null,
+        'og_image' => trim((string) input('og_image')) ?: null,
+        'robots' => $robots ? implode(',', $robots) : null,
+        'canonical_url' => filter_var($canonical, FILTER_VALIDATE_URL) ? $canonical : null,
+        'schema_type' => $schema !== '' && array_key_exists($schema, seo_schema_types($kind)) ? $schema : null,
+    ];
+}
+
+/** Apply a row's SEO panel overrides to the page meta passed to meta_tags(). */
+function seo_apply(array $row, array $meta): array
+{
+    if (!empty($row['og_title'])) {
+        $meta['og_title'] = $row['og_title'];
+    }
+    if (!empty($row['og_description'])) {
+        $meta['og_description'] = $row['og_description'];
+    }
+    if (!empty($row['og_image'])) {
+        $meta['image'] = image_url($row['og_image'], '');
+    }
+    if (!empty($row['robots'])) {
+        $meta['robots'] = explode(',', $row['robots']);
+    }
+    if (!empty($row['canonical_url'])) {
+        $meta['canonical'] = $row['canonical_url'];
+    }
+    if (!empty($row['focus_keyword'])) {
+        $meta['keywords'] = trim($row['focus_keyword'] . ', ' . ($row['secondary_keywords'] ?? ''), ', ');
+    }
+    return $meta;
 }

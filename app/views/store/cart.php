@@ -33,8 +33,9 @@
                 <div class="row"><span>Subtotal</span><span><?= money($totals['subtotal']) ?></span></div>
                 <?php if ($totals['discount'] > 0): ?><div class="row good"><span>Coupon <?= e($totals['coupon']) ?></span><span>−<?= money($totals['discount']) ?></span></div><?php endif; ?>
                 <div class="row"><span>Delivery</span><span><?= $totals['shipping'] > 0 ? money($totals['shipping']) : 'Free' ?></span></div>
-                <?php if ($totals['free_shipping_gap'] > 0): ?><p class="small muted">Add <?= money($totals['free_shipping_gap']) ?> more for free delivery.</p><?php endif; ?>
+                <?php if (setting_on('shipping_free_highlight') && $totals['free_shipping_gap'] > 0): ?><p class="small muted">Add <?= money($totals['free_shipping_gap']) ?> more for free delivery.</p><?php endif; ?>
                 <div class="row total"><span>Total</span><span><?= money($totals['total']) ?></span></div>
+                <?php if ($totals['coupon'] || coupons_available()): ?>
                 <form method="post" action="/cart/coupon" class="coupon">
                     <?= csrf_field() ?>
                     <?php if ($totals['coupon']): ?>
@@ -43,6 +44,8 @@
                         <input name="coupon" placeholder="Coupon code" aria-label="Coupon code"><button class="btn btn-ghost btn-small">Apply</button>
                     <?php endif; ?>
                 </form>
+                <?php endif; ?>
+                <?php $minOrder = (float) setting('min_order_amount'); if ($minOrder > 0 && $totals['subtotal'] < $minOrder): ?><p class="notice warn small">The minimum order value is <?= money($minOrder) ?>.</p><?php endif; ?>
                 <a class="btn btn-lg btn-block" href="/checkout/">Checkout securely <?= icon('arrow') ?></a>
                 <p class="small muted center"><?= icon('shield') ?> UPI · Cards · Netbanking</p>
             </aside>

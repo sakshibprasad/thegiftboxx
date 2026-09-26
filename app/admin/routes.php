@@ -7,6 +7,8 @@ require_once APP_DIR . '/admin/products.php';
 require_once APP_DIR . '/admin/orders.php';
 require_once APP_DIR . '/admin/content.php';
 require_once APP_DIR . '/admin/settings.php';
+require_once APP_DIR . '/admin/wizards.php';
+require_once APP_DIR . '/admin/system.php';
 
 function admin_dispatch(string $method, string $path): void
 {
@@ -77,6 +79,7 @@ function admin_dispatch(string $method, string $path): void
         ['POST', '#^/redirects/save$#', 'admin_redirect_save'],
         ['POST', '#^/redirects/(\d+)/delete$#', 'admin_redirect_delete'],
 
+        ['GET', '#^/setup$#', 'admin_setup'],
         ['GET', '#^/settings$#', 'admin_settings'],
         ['GET', '#^/settings/([a-z]+)$#', 'admin_settings'],
         ['POST', '#^/settings/([a-z]+)$#', 'admin_settings_save'],
@@ -88,6 +91,11 @@ function admin_dispatch(string $method, string $path): void
         ['POST', '#^/import/woo/start$#', 'admin_import_woo_start'],
         ['POST', '#^/import/woo/step$#', 'admin_import_woo_step'],
         ['POST', '#^/import/woo/reset$#', 'admin_import_woo_reset'],
+        ['GET', '#^/activity$#', 'admin_activity'],
+        ['POST', '#^/activity/(\d+)/revert$#', 'admin_activity_revert'],
+        ['POST', '#^/activity/(\d+)/restore$#', 'admin_activity_restore'],
+        ['GET', '#^/updates$#', 'admin_updates'],
+        ['POST', '#^/updates$#', 'admin_updates_install'],
         ['GET', '#^/team$#', 'admin_team'],
         ['POST', '#^/team/save$#', 'admin_team_save'],
         ['POST', '#^/team/(\d+)/delete$#', 'admin_team_delete'],
@@ -156,10 +164,13 @@ function admin_nav(): array
     ];
     if ($u && $u['role'] === 'admin') {
         $nav[] = ['Settings', [
+            ['/setup', 'Guided setup', 'wand', 'setup'],
             ['/settings/appearance', 'Appearance', 'palette', 'appearance'],
             ['/settings/payments', 'Payments', 'card', 'payments'],
             ['/settings', 'All settings', 'settings', 'settings'],
             ['/import', 'Import', 'import', 'import'],
+            ['/activity', 'History', 'refresh', 'activity'],
+            ['/updates', 'Updates', 'sparkle', 'updates'],
         ]];
     }
     return $nav;
@@ -283,13 +294,13 @@ function admin_setup_checklist(): array
 {
     return [
         ['Add your products', (int) val('SELECT COUNT(*) FROM products') > 0, '/import'],
-        ['Connect a payment gateway (PayU or Cashfree)', (bool) payment_methods(), '/settings/payments'],
-        ['Set up order emails (SMTP)', (bool) setting('smtp_pass'), '/settings/email'],
-        ['Connect Shiprocket', setting_on('shiprocket_enabled') && (bool) setting('shiprocket_password'), '/settings/shipping'],
-        ['Add Google Analytics', (bool) setting('ga4_id'), '/settings/integrations'],
-        ['Verify Google Search Console', (bool) setting('gsc_verification'), '/settings/integrations'],
-        ['Add Meta Pixel', (bool) setting('meta_pixel_id'), '/settings/integrations'],
-        ['Schedule the cron job (abandoned-cart emails)', (bool) setting('cron_last_run', ''), '/settings/email'],
+        ['Connect a payment gateway (PayU or Cashfree)', (bool) payment_methods(), '/setup#payu'],
+        ['Set up order emails (SMTP)', (bool) setting('smtp_pass'), '/setup#email'],
+        ['Connect Shiprocket', setting_on('shiprocket_enabled') && (bool) setting('shiprocket_password'), '/setup#shiprocket'],
+        ['Add Google Analytics', (bool) setting('ga4_id'), '/setup#ga4'],
+        ['Verify Google Search Console', (bool) setting('gsc_verification'), '/setup#gsc'],
+        ['Add Meta Pixel', (bool) setting('meta_pixel_id'), '/setup#meta'],
+        ['Schedule the cron job (abandoned-cart emails)', (bool) setting('cron_last_run', ''), '/setup#cron'],
     ];
 }
 
@@ -320,4 +331,10 @@ function image_field(string $name, ?string $value, string $label = 'Choose image
         . '<input type="hidden" name="' . e($name) . '" value="' . e($value) . '">'
         . '<label class="btn secondary sm">' . icon('image') . ' ' . e($label) . '<input type="file" accept="image/*" hidden></label>'
         . '<button type="button" class="btn danger sm" data-remove' . ($value ? '' : ' hidden') . '>Remove</button></div>';
+}
+
+/** Secret link parameter that lets admins preview drafts on the storefront. */
+function preview_token(): string
+{
+    return hash_hmac('sha256', 'preview', (string) config('app_key'));
 }

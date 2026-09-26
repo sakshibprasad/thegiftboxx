@@ -2,6 +2,7 @@
 /** @var array $lines @var array $totals @var array $methods @var array $prefill */
 $v = fn($k) => old($k, $prefill[$k] ?? '');
 $minDate = date('Y-m-d', strtotime('+' . (int) setting('delivery_min_days') . ' days'));
+$maxDate = date('Y-m-d', strtotime('+' . max((int) setting('delivery_min_days') + 1, (int) setting('delivery_max_days')) . ' days'));
 $states = indian_states();
 $firstMethod = array_key_first($methods);
 $chosen = old('payment_method', $firstMethod);
@@ -58,14 +59,14 @@ $chosen = old('payment_method', $firstMethod);
                     <legend><span class="step">3</span> Make it personal</legend>
                     <div class="form-grid">
                         <?php if (setting_on('gift_message_enabled')): ?>
-                            <label class="full">Gift message card <em>(we’ll handwrite it)</em>
+                            <label class="full">Gift message <em>(printed on a card inside the box)</em>
                                 <textarea name="gift_message" rows="3" maxlength="300" placeholder="Happy birthday, Riya! Here’s to another year of chaos and cake. – Love, Arjun" data-count><?= e(old('gift_message')) ?></textarea>
                                 <small class="muted" data-counter>0 / 300</small>
                             </label>
                         <?php endif; ?>
                         <?php if (setting_on('delivery_date_enabled')): ?>
-                            <label>Preferred delivery date <em>(optional)</em><input type="date" name="delivery_date" min="<?= $minDate ?>" value="<?= e(old('delivery_date')) ?>"></label>
-                            <p class="small muted align-end">We’ll do our best to deliver on this date. Earliest: <?= e(nice_date($minDate)) ?>.</p>
+                            <label>Preferred delivery date <em>(optional)</em><input type="date" name="delivery_date" min="<?= $minDate ?>" max="<?= $maxDate ?>" value="<?= e(old('delivery_date')) ?>"></label>
+                            <p class="small muted align-end">Boxes are packed to order, so the earliest date we can promise is <?= e(nice_date($minDate, 'l, j M')) ?>.</p>
                         <?php endif; ?>
                         <label class="full">Order notes <em>(optional)</em><textarea name="customer_note" rows="2" maxlength="500" placeholder="Anything else we should know?"><?= e(old('customer_note')) ?></textarea></label>
                     </div>

@@ -21,7 +21,7 @@ $tabs = [['/', 'Home', 'home', 'dashboard'], ['/orders', 'Orders', 'orders', 'or
     <link rel="icon" href="/assets/favicon.png">
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
     <link rel="stylesheet" href="<?= asset('admin.css') ?>">
-    <style>:root{--accent:<?= e($accent) ?>}</style>
+    <style>:root{--accent:<?= e($accent) ?>;--toggle:<?= e(setting('admin_toggle')) ?>}</style>
 </head>
 <body class="<?= !empty($wide) ? 'wide' : '' ?>">
 <?php if ($u): ?>
@@ -39,7 +39,7 @@ $tabs = [['/', 'Home', 'home', 'dashboard'], ['/orders', 'Orders', 'orders', 'or
         <?php endforeach; ?>
     </nav>
     <div class="side-foot">
-        <a href="<?= e(site_url()) ?>" target="_blank" rel="noopener" class="view-site"><?= icon('external') ?><span>View store</span></a>
+        <a href="<?= e(site_url()) ?>" target="_blank" rel="noopener" class="view-site"><?= icon('external') ?><span>View store</span><small class="dim" style="margin-left:auto">v<?= e(app_version()) ?></small></a>
         <div class="me">
             <span class="avatar"><?= e(mb_strtoupper(mb_substr($u['name'] ?: $u['email'], 0, 1))) ?></span>
             <a href="/profile" class="me-name"><strong><?= e($u['name'] ?: 'Admin') ?></strong><small><?= e(admin_roles()[$u['role']] ?? $u['role']) ?></small></a>
@@ -53,16 +53,19 @@ $tabs = [['/', 'Home', 'home', 'dashboard'], ['/orders', 'Orders', 'orders', 'or
 <main class="main">
     <?php if ($u): ?>
     <header class="topbar">
-        <button class="icon-btn only-mobile" data-open-side aria-label="Menu"><?= icon('menu') ?></button>
+        <div class="top-left"><button class="icon-btn only-mobile" data-open-side aria-label="Menu"><?= icon('menu') ?></button></div>
         <h1 class="top-title"><?= e($title) ?></h1>
         <div class="top-actions">
             <button class="icon-btn only-mobile" data-cmdk aria-label="Search"><?= icon('search') ?></button>
-            <button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode" title="Light / dark"><?= icon('moon') ?></button>
+            <a class="icon-btn hide-mobile" href="<?= e(site_url()) ?>" target="_blank" rel="noopener" title="View store" aria-label="View store"><?= icon('external') ?></a>
         </div>
     </header>
     <?php endif; ?>
     <div class="toasts">
-        <?php foreach (flashes() as $f): ?><div class="toast t-<?= e($f['type']) ?>"><?= icon($f['type'] === 'error' ? 'alert' : 'check') ?><span><?= e($f['message']) ?></span></div><?php endforeach; ?>
+        <?php $fl = flashes(); $undo = $_SESSION['_undo'] ?? null; unset($_SESSION['_undo']);
+        foreach ($fl as $i => $f): ?><div class="toast t-<?= e($f['type']) ?>"><?= icon($f['type'] === 'error' ? 'alert' : 'check') ?><span><?= e($f['message']) ?></span>
+            <?php if ($undo && $i === 0 && $f['type'] === 'success' && ($u['role'] ?? '') === 'admin'): ?><form method="post" action="/activity/<?= (int) $undo ?>/revert" class="toast-undo"><?= csrf_field() ?><button class="btn plain sm">Undo</button></form><?php endif; ?>
+        </div><?php endforeach; ?>
     </div>
     <div class="content"><?= $content ?></div>
 </main>

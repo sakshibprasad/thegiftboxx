@@ -42,7 +42,7 @@ $waLink = 'https://wa.me/' . preg_replace('/\D/', '', (strlen(preg_replace('/\D/
         <?php if ($o['gift_message'] || $o['delivery_date'] || $o['customer_note']): ?>
         <div class="card pad fields">
             <h3 style="margin:0">Gift details</h3>
-            <?php if ($o['gift_message']): ?><div><p class="small muted" style="margin:0 0 4px">Message card (write this by hand)</p><div class="gift-msg">“<?= e($o['gift_message']) ?>”</div></div><?php endif; ?>
+            <?php if ($o['gift_message']): ?><div><p class="small muted" style="margin:0 0 4px">Gift message (print on the card)</p><div class="gift-msg">“<?= e($o['gift_message']) ?>”</div></div><?php endif; ?>
             <?php if ($o['delivery_date']): ?><p style="margin:0"><?= icon('calendar') ?> Preferred delivery: <strong><?= e(nice_date($o['delivery_date'], 'l, j M Y')) ?></strong></p><?php endif; ?>
             <?php if ($o['customer_note']): ?><p style="margin:0"><span class="muted">Customer note:</span> <?= e($o['customer_note']) ?></p><?php endif; ?>
         </div>

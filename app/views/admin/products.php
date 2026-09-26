@@ -38,9 +38,10 @@
                 <thead><tr><th style="width:36px"><input type="checkbox" data-select-all aria-label="Select all"></th><th colspan="2">Product</th><th class="hide-m">Status</th><th class="hide-m">Stock</th><th class="right">Price</th><th class="hide-m right">Views</th></tr></thead>
                 <tbody>
                 <?php foreach ($rows as $p): ?>
-                    <tr data-href="/products/<?= (int) $p['id'] ?>">
+                    <?php $sold = $p['stock_status'] === 'outofstock'; $draft = $p['status'] !== 'published'; ?>
+                    <tr data-href="/products/<?= (int) $p['id'] ?>" class="<?= $sold || $draft ? 'is-muted' : '' ?>">
                         <td><input type="checkbox" name="ids[]" value="<?= (int) $p['id'] ?>" aria-label="Select"></td>
-                        <td style="width:52px"><img class="thumb" src="<?= e(image_url($p['image'], 'sm')) ?>" alt="" loading="lazy"></td>
+                        <td style="width:56px"><span class="thumb-tag"><img class="thumb" src="<?= e(image_url($p['image'], 'sm')) ?>" alt="" loading="lazy"><?php if ($draft): ?><em class="t-draft">Draft</em><?php elseif ($sold): ?><em class="t-sold">Sold out</em><?php endif; ?></span></td>
                         <td><div class="title"><?= e($p['name']) ?> <?= $p['featured'] ? '<span class="badge b-warn">★ Bestseller</span>' : '' ?></div><div class="sub"><?= e(implode(', ', $catsByProduct[$p['id']] ?? ['No category'])) ?><?= $p['type'] === 'variable' ? ' · Has options' : '' ?></div></td>
                         <td class="hide-m"><span class="badge b-<?= e($p['status']) ?>"><?= $p['status'] === 'published' ? 'Live' : 'Draft' ?></span></td>
                         <td class="hide-m"><?= $p['stock_status'] === 'outofstock' ? '<span class="badge b-outofstock">Sold out</span>' : ($p['manage_stock'] && $p['stock_qty'] !== null ? (int) $p['stock_qty'] . ' in stock' : '<span class="muted">In stock</span>') ?></td>

@@ -4,5 +4,5 @@
 <title><?= e($title) ?></title><meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="<?= asset('admin.css') ?>">
-<?php if (app_installed()): ?><style>:root{--accent:<?= e(setting('admin_accent')) ?>}</style><?php endif; ?>
+<?php if (app_installed()): ?><style>:root{--accent:<?= e(setting('admin_accent')) ?>;--toggle:<?= e(setting('admin_toggle')) ?>}</style><?php endif; ?>
 </head>

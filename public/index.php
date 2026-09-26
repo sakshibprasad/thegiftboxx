@@ -31,6 +31,7 @@ if (PHP_SAPI === 'cli-server') {
     }
 }
 
+run_migrations();
 start_session('tgb_store');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');

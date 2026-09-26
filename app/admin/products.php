@@ -28,7 +28,7 @@ function admin_products(): void
     $w = implode(' AND ', $where);
     $total = (int) val("SELECT COUNT(*) FROM products p WHERE {$w}", $params);
     $per = 30;
-    $rows = attach_primary_images(all("SELECT p.* FROM products p WHERE {$w} ORDER BY p.sort_order, p.created_at DESC LIMIT {$per} OFFSET " . (($page - 1) * $per), $params));
+    $rows = attach_primary_images(all("SELECT p.* FROM products p WHERE {$w} ORDER BY CASE WHEN p.status = 'published' AND p.stock_status <> 'outofstock' THEN 0 WHEN p.status = 'published' THEN 1 ELSE 2 END, p.sort_order, p.created_at DESC LIMIT {$per} OFFSET " . (($page - 1) * $per), $params));
     $catsByProduct = [];
     if ($rows) {
         $ids = array_column($rows, 'id');
@@ -56,7 +56,7 @@ function admin_product_edit(?string $id = null): void
         $p['category_ids'] = array_map('intval', array_column($p['categories'], 'id'));
     } else {
         $p = [
-            'id' => null, 'type' => 'simple', 'name' => '', 'slug' => '', 'status' => 'draft', 'featured' => 0, 'sku' => '', 'gtin' => '',
+            'id' => null, 'type' => 'simple', 'name' => '', 'slug' => '', 'status' => 'published', 'featured' => 0, 'sku' => '', 'gtin' => '',
             'brand_id' => null, 'box_type_id' => null, 'page_bg_color' => null, 'page_text_color' => null,
             'short_description' => '', 'description' => '', 'regular_price' => '', 'sale_price' => '', 'sale_from' => null, 'sale_to' => null,
             'manage_stock' => 0, 'stock_qty' => null, 'stock_status' => 'instock', 'weight' => '', 'length' => '', 'width' => '', 'height' => '',
@@ -147,10 +147,12 @@ function admin_product_save(): void
         'focus_keyword' => input('focus_keyword') ?: null,
         'google_sync' => input('google_sync') ? 1 : 0,
         'updated_at' => now(),
-    ];
+    ] + seo_input('product');
     if ($data['manage_stock'] && $type === 'simple') {
         $data['stock_status'] = $data['stock_qty'] > 0 ? 'instock' : 'outofstock';
     }
+    $isNew = !$id;
+    $before = history_snapshot('product', $id);
     transaction(function () use (&$id, $data, $type) {
         if ($id) {
             update('products', $data, 'id = ?', [$id]);
@@ -235,6 +237,7 @@ function admin_product_save(): void
         }
     });
     product_refresh_cache($id);
+    history_log($isNew ? 'create' : 'update', 'product', $id, ($isNew ? 'Added product “' : 'Edited product “') . $name . '”', $before);
     flash('success', 'Saved “' . $name . '”.');
     redirect('/products/' . $id);
 }
@@ -242,12 +245,14 @@ function admin_product_save(): void
 function admin_product_delete(string $id): void
 {
     $id = (int) $id;
+    $before = history_snapshot('product', $id);
     q('DELETE FROM product_categories WHERE product_id = ?', [$id]);
     q('DELETE FROM variations WHERE product_id = ?', [$id]);
     q('DELETE FROM product_images WHERE product_id = ?', [$id]);
     q('DELETE FROM reviews WHERE product_id = ?', [$id]);
     q('DELETE FROM wishlist WHERE product_id = ?', [$id]);
     q('DELETE FROM products WHERE id = ?', [$id]);
+    history_log('delete', 'product', $id, 'Deleted product “' . ($before['product']['name'] ?? '') . '”', $before);
     flash('success', 'Product deleted.');
     redirect('/products');
 }
@@ -290,6 +295,7 @@ function admin_product_duplicate(string $id): void
         return $newId;
     });
     product_refresh_cache($newId);
+    history_log('create', 'product', $newId, 'Duplicated “' . $p['name'] . '”', null);
     flash('success', 'Duplicated. You’re now editing the copy (saved as a draft).');
     redirect('/products/' . $newId);
 }
@@ -301,7 +307,11 @@ function admin_products_bulk(): void
     if (!$ids) {
         field_error_redirect('Select at least one product.', '/products');
     }
+    $labels = ['publish' => 'Published', 'draft' => 'Moved to drafts', 'feature' => 'Marked as bestseller', 'unfeature' => 'Removed bestseller',
+        'outofstock' => 'Marked sold out', 'instock' => 'Marked in stock', 'delete' => 'Deleted'];
     foreach ($ids as $id) {
+        $before = history_snapshot('product', $id);
+        history_log($action === 'delete' ? 'delete' : 'update', 'product', $id, ($labels[$action] ?? 'Updated') . ' “' . ($before['product']['name'] ?? '#' . $id) . '”', $before);
         match ($action) {
             'publish' => update('products', ['status' => 'published'], 'id = ?', [$id]),
             'draft' => update('products', ['status' => 'draft'], 'id = ?', [$id]),
@@ -369,18 +379,17 @@ function admin_category_save(): void
         'seo_title' => input('seo_title') ?: null,
         'seo_description' => input('seo_description') ?: null,
         'sort_order' => (int) input('sort_order'),
-    ];
-    if ($id) {
-        update('categories', $data, 'id = ?', [$id]);
-    } else {
-        insert('categories', $data);
-    }
+    ] + seo_input('category');
+    history_track('category', $id, $id ? 'update' : 'create', ($id ? 'Edited' : 'Added') . ' category “' . $name . '”',
+        fn() => $id ? update('categories', $data, 'id = ?', [$id]) : insert('categories', $data));
     flash('success', 'Category saved.');
     redirect('/categories');
 }
 
 function admin_category_delete(string $id): void
 {
+    $before = history_snapshot('category', (int) $id);
+    history_log('delete', 'category', (int) $id, 'Deleted category “' . ($before['row']['name'] ?? '') . '”', $before);
     q('DELETE FROM product_categories WHERE category_id = ?', [(int) $id]);
     q('UPDATE categories SET parent_id = NULL WHERE parent_id = ?', [(int) $id]);
     q('DELETE FROM categories WHERE id = ?', [(int) $id]);
@@ -399,13 +408,16 @@ function admin_brand_save(): void
     $id = (int) input('id') ?: null;
     $name = trim((string) input('name'));
     if ($name !== '') {
-        $id ? update('brands', ['name' => $name], 'id = ?', [$id]) : insert('brands', ['name' => $name, 'slug' => unique_slug('brands', $name)]);
+        history_track('brand', $id, $id ? 'update' : 'create', 'Saved brand “' . $name . '”',
+            fn() => $id ? update('brands', ['name' => $name], 'id = ?', [$id]) : insert('brands', ['name' => $name, 'slug' => unique_slug('brands', $name)]));
     }
     redirect('/brands');
 }
 
 function admin_brand_delete(string $id): void
 {
+    $before = history_snapshot('brand', (int) $id);
+    history_log('delete', 'brand', (int) $id, 'Deleted brand “' . ($before['row']['name'] ?? '') . '”', $before);
     q('UPDATE products SET brand_id = NULL WHERE brand_id = ?', [(int) $id]);
     q('DELETE FROM brands WHERE id = ?', [(int) $id]);
     redirect('/brands');
@@ -436,13 +448,16 @@ function admin_box_type_save(): void
         'description' => trim((string) input('description')),
         'sort_order' => (int) input('sort_order'),
     ];
-    $id ? update('box_types', $data, 'id = ?', [$id]) : insert('box_types', $data);
+    history_track('box_type', $id, $id ? 'update' : 'create', ($id ? 'Edited' : 'Added') . ' box type “' . $name . '”',
+        fn() => $id ? update('box_types', $data, 'id = ?', [$id]) : insert('box_types', $data));
     flash('success', 'Box type “' . $name . '” saved. Product pages using it update instantly.');
     redirect('/box-types');
 }
 
 function admin_box_type_delete(string $id): void
 {
+    $before = history_snapshot('box_type', (int) $id);
+    history_log('delete', 'box_type', (int) $id, 'Deleted box type “' . ($before['row']['name'] ?? '') . '”', $before);
     q('UPDATE products SET box_type_id = NULL WHERE box_type_id = ?', [(int) $id]);
     q('DELETE FROM box_types WHERE id = ?', [(int) $id]);
     redirect('/box-types');
@@ -462,6 +477,7 @@ function admin_review_action(string $id, string $action): void
 {
     $r = one('SELECT * FROM reviews WHERE id = ?', [(int) $id]);
     if ($r) {
+        history_log($action === 'delete' ? 'delete' : 'update', 'review', (int) $r['id'], ucfirst($action === 'approve' ? 'approved' : ($action === 'delete' ? 'deleted' : 'hid')) . ' review by ' . $r['name'], history_snapshot('review', (int) $r['id']));
         if ($action === 'delete') {
             q('DELETE FROM reviews WHERE id = ?', [$r['id']]);
         } else {

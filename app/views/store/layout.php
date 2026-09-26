@@ -3,7 +3,7 @@
 $store = setting('store_name');
 $headingFont = setting('theme_heading_font');
 $bodyFont = setting('theme_body_font');
-$fontsUrl = 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $headingFont) . ':ital,wght@0,400;0,500;0,600;1,400'
+$fontsUrl = 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $headingFont) . ':ital,wght@0,400;0,500;0,600;1,400;1,500'
     . ($bodyFont !== $headingFont ? '&family=' . str_replace(' ', '+', $bodyFont) . ':wght@300;400;500;600' : '') . '&display=swap';
 $cats = array_values(array_filter(categories_all(), fn($c) => !$c['parent_id'] && $c['product_count'] > 0));
 $cartCount = cart_count();
@@ -12,6 +12,19 @@ $path = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
 $wa = preg_replace('/\D/', '', (string) setting('whatsapp_number'));
 $footerPages = all("SELECT slug, title FROM pages WHERE status = 'published' AND show_in_footer = 1 AND slug <> 'about' ORDER BY title");
 $blogOn = setting_on('blog_enabled');
+$favicon = setting('favicon') ? image_url(setting('favicon'), '') : '/assets/img/favicon-32.png';
+$social = array_filter([
+    'instagram' => setting('instagram_url'), 'facebook' => setting('facebook_url'), 'youtube' => setting('youtube_url'),
+    'pinterest' => setting('pinterest_url'), 'linkedin' => setting('linkedin_url'),
+]);
+$nav = [['/', 'Home'], ['/shop/', 'Shop']];
+$navAfter = [['/corporate-gifting/', 'Corporate'], ['/about/', 'Our story']];
+if ($blogOn) {
+    $navAfter[] = ['/blog/', 'Journal'];
+}
+$navAfter[] = ['/contact/', 'Contact'];
+$isActive = fn(string $href) => $href === '/' ? $path === '/' : str_starts_with((string) $path, $href);
+$tel = preg_replace('/[^\d+]/', '', (string) setting('store_phone'));
 ?><!doctype html>
 <html lang="en-IN">
 <head>
@@ -19,9 +32,9 @@ $blogOn = setting_on('blog_enabled');
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <?= meta_tags($meta) ?>
 
-    <meta name="theme-color" content="<?= e(setting('theme_dark')) ?>">
-    <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+    <meta name="theme-color" content="<?= e(setting('theme_bg')) ?>">
+    <link rel="icon" href="<?= e($favicon) ?>">
+    <link rel="apple-touch-icon" href="<?= e(setting('favicon') ? $favicon : '/assets/img/apple-touch-icon.png') ?>">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,18 +51,19 @@ $blogOn = setting_on('blog_enabled');
 
 <header class="site-header" id="top">
     <div class="wrap header-inner">
-        <button class="icon-btn only-mobile" data-open="menu" aria-label="Open menu"><?= icon('menu') ?></button>
-        <a href="/" class="logo" aria-label="<?= e($store) ?> home">
-            <img src="<?= e(store_logo()) ?>" alt="<?= e($store) ?>" width="180" height="29">
-        </a>
+        <div class="h-left">
+            <button class="icon-btn only-mobile" data-open="menu" aria-label="Open menu"><?= icon('menu') ?></button>
+            <a href="/" class="logo logo-desk" aria-label="<?= e($store) ?> home"><img src="<?= e(store_logo()) ?>" alt="<?= e($store) ?>" width="180" height="29"></a>
+        </div>
+        <a href="/" class="logo logo-mob" aria-label="<?= e($store) ?> home"><img src="<?= e(store_logo()) ?>" alt="<?= e($store) ?>" width="150" height="24"></a>
         <nav class="main-nav" aria-label="Main">
-            <a href="/shop/" class="<?= $path === '/shop/' ? 'active' : '' ?>">Shop all</a>
+            <?php foreach ($nav as [$href, $label]): ?><a href="<?= e($href) ?>" class="<?= $isActive($href) ? 'active' : '' ?>"><?= e($label) ?></a><?php endforeach; ?>
             <div class="has-menu">
-                <button type="button" aria-expanded="false">Occasions <?= icon('chevron') ?></button>
+                <button type="button" aria-expanded="false" class="<?= str_starts_with((string) $path, '/product-category/') ? 'active' : '' ?>">Occasions <?= icon('chevron') ?></button>
                 <div class="mega">
                     <div class="mega-links">
                         <?php foreach ($cats as $c): ?>
-                            <a href="<?= e(category_url($c)) ?>"><?= e($c['name']) ?><small><?= (int) $c['product_count'] ?> boxes</small></a>
+                            <a href="<?= e(category_url($c)) ?>"><?= e($c['name']) ?><small><?= (int) $c['product_count'] ?> box<?= $c['product_count'] == 1 ? '' : 'es' ?></small></a>
                         <?php endforeach; ?>
                     </div>
                     <a class="mega-card" href="/custom-box/">
@@ -57,13 +71,10 @@ $blogOn = setting_on('blog_enabled');
                     </a>
                 </div>
             </div>
-            <a href="/corporate-gifting/" class="<?= $path === '/corporate-gifting/' ? 'active' : '' ?>">Corporate</a>
-            <a href="/about/" class="<?= $path === '/about/' ? 'active' : '' ?>">Our story</a>
-            <?php if ($blogOn): ?><a href="/blog/" class="<?= str_starts_with((string) $path, '/blog/') ? 'active' : '' ?>">Journal</a><?php endif; ?>
-            <a href="/contact/" class="<?= $path === '/contact/' ? 'active' : '' ?>">Contact</a>
+            <?php foreach ($navAfter as [$href, $label]): ?><a href="<?= e($href) ?>" class="<?= $isActive($href) ? 'active' : '' ?>"><?= e($label) ?></a><?php endforeach; ?>
         </nav>
         <div class="header-actions">
-            <button class="icon-btn" data-open="search" aria-label="Search"><?= icon('search') ?></button>
+            <?php if (setting_on('search_enabled')): ?><button class="icon-btn" data-open="search" aria-label="Search"><?= icon('search') ?></button><?php endif; ?>
             <a class="icon-btn hide-sm" href="/wishlist/" aria-label="Wishlist"><?= icon('heart') ?><span class="badge" data-wish-count<?= $wishCount ? '' : ' hidden' ?>><?= $wishCount ?></span></a>
             <a class="icon-btn hide-sm" href="/my-account/" aria-label="My account"><?= icon('user') ?></a>
             <button class="icon-btn" data-open="cart" aria-label="Cart"><?= icon('bag') ?><span class="badge" data-cart-count<?= $cartCount ? '' : ' hidden' ?>><?= $cartCount ?></span></button>
@@ -80,64 +91,102 @@ $blogOn = setting_on('blog_enabled');
 <?php if (setting_on('checkout_disabled')): ?><div class="holiday"><?= icon('clock') ?> <?= e(setting('checkout_disabled_text')) ?></div><?php endif; ?>
 <main id="main"><?= $content ?></main>
 
-<footer class="site-footer">
-    <div class="wrap footer-grid">
-        <div class="footer-brand">
-            <img src="<?= e(store_logo(true)) ?>" alt="<?= e($store) ?>" width="200" height="32" loading="lazy">
-            <p>Premium gift hampers packed in real wooden boxes. Curated in Navi Mumbai, delivered across India.</p>
-            <div class="social">
-                <?php if ($ig = setting('instagram_url')): ?><a href="<?= e($ig) ?>" rel="noopener" target="_blank" aria-label="Instagram"><?= icon('instagram') ?></a><?php endif; ?>
-                <?php if ($fb = setting('facebook_url')): ?><a href="<?= e($fb) ?>" rel="noopener" target="_blank" aria-label="Facebook"><?= icon('facebook') ?></a><?php endif; ?>
-                <?php if ($wa): ?><a href="https://wa.me/<?= e($wa) ?>" rel="noopener" target="_blank" aria-label="WhatsApp"><?= icon('whatsapp') ?></a><?php endif; ?>
+<?php $footImg = setting('footer_image') ?: (home_content()['intro_image'] ?? '');
+$footImg = $footImg ? image_url($footImg, 'lg') : '/assets/img/hero-2.jpg'; ?>
+<footer class="foot">
+    <section class="foot-close">
+        <div class="wrap">
+            <div class="fc-card">
+                <div class="fc-media"><img src="<?= e($footImg) ?>" alt="" loading="lazy" width="900" height="1100"></div>
+                <div class="fc-copy">
+                    <p class="fc-eyebrow"><?= e($store) ?></p>
+                    <p class="fc-title"><?= e(setting('footer_statement')) ?></p>
+                    <?php if (setting('footer_text')): ?><p class="fc-text"><?= e(setting('footer_text')) ?></p><?php endif; ?>
+                    <div class="fc-cta">
+                        <a class="btn btn-light" href="/shop/">Shop gift boxes <?= icon('arrow') ?></a>
+                        <?php if ($wa): ?><a class="btn btn-outline-light" href="https://wa.me/<?= e($wa) ?>" target="_blank" rel="noopener"><?= icon('whatsapp') ?> Chat with us</a><?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
-        <div>
-            <h3>Shop</h3>
-            <a href="/shop/">All gift boxes</a>
-            <?php foreach (array_slice($cats, 0, 6) as $c): ?><a href="<?= e(category_url($c)) ?>"><?= e($c['name']) ?></a><?php endforeach; ?>
+    </section>
+    <div class="foot-main">
+        <div class="wrap">
+            <ul class="foot-promises">
+                <li><?= icon('box') ?><span>Premium wooden boxes</span></li>
+                <li><?= icon('sparkle') ?><span>Branded favourites inside</span></li>
+                <li><?= icon('gift') ?><span>Packed to order, ready to gift</span></li>
+                <li><?= icon('truck') ?><span>Delivered across India</span></li>
+            </ul>
+            <div class="foot-brand">
+                <a href="/" aria-label="<?= e($store) ?> home"><img src="<?= e(store_logo()) ?>" alt="<?= e($store) ?>" width="220" height="34" loading="lazy"></a>
+                <p><?= nl2br(e(setting('footer_tagline'))) ?></p>
+            </div>
+            <nav class="foot-nav" aria-label="Footer">
+                <a href="/">Home</a><a href="/shop/">Shop</a><a href="/corporate-gifting/">Corporate</a><a href="/custom-box/">Design your own</a><a href="/about/">Our story</a><?php if ($blogOn): ?><a href="/blog/">Journal</a><?php endif; ?><a href="/track-order/">Track order</a><a href="/contact/">Contact</a>
+            </nav>
+            <?php if ($cats): ?>
+            <nav class="foot-occ" aria-label="Occasions">
+                <?php foreach (array_slice($cats, 0, 8) as $c): ?><a href="<?= e(category_url($c)) ?>"><?= e($c['name']) ?></a><?php endforeach; ?>
+            </nav>
+            <?php endif; ?>
+            <div class="foot-contact">
+                <div class="fct">
+                    <a href="tel:<?= e($tel) ?>"><?= e(setting('store_phone')) ?></a>
+                    <span class="dot" aria-hidden="true"></span>
+                    <a href="mailto:<?= e(setting('store_email')) ?>"><?= e(setting('store_email')) ?></a>
+                </div>
+                <?php if (setting('store_hours')): ?><p><?= e(str_replace("\n", ' · ', trim((string) setting('store_hours')))) ?></p><?php endif; ?>
+                <?php if ($social || $wa): ?>
+                <div class="foot-social">
+                    <?php foreach ($social as $net => $url): ?><a href="<?= e($url) ?>" rel="noopener" target="_blank" aria-label="<?= e(ucfirst($net)) ?>"><?= icon(in_array($net, ['instagram', 'facebook'], true) ? $net : 'external') ?></a><?php endforeach; ?>
+                    <?php if ($wa): ?><a href="https://wa.me/<?= e($wa) ?>" rel="noopener" target="_blank" aria-label="WhatsApp"><?= icon('whatsapp') ?></a><?php endif; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="foot-bottom">
+                <span>© <?= date('Y') ?> <?= e($store) ?></span>
+                <span class="foot-legal"><?php foreach ($footerPages as $fp): ?><a href="/<?= e($fp['slug']) ?>/"><?= e($fp['title']) ?></a><?php endforeach; ?></span>
+                <span class="pay-note"><?= icon('shield') ?> Secure payments</span>
+            </div>
         </div>
-        <div>
-            <h3>Help</h3>
-            <a href="/contact/">Contact us</a>
-            <a href="/corporate-gifting/">Corporate gifting</a>
-            <a href="/custom-box/">Design your own box</a>
-            <a href="/track-order/">Track your order</a>
-            <?php if ($blogOn): ?><a href="/blog/">Journal</a><?php endif; ?>
-            <?php foreach ($footerPages as $fp): ?><a href="/<?= e($fp['slug']) ?>/"><?= e($fp['title']) ?></a><?php endforeach; ?>
-        </div>
-        <div>
-            <h3>Visit or call</h3>
-            <p class="with-icon"><?= icon('pin') ?><span><?= nl2br(e(setting('store_address'))) ?></span></p>
-            <p class="with-icon"><?= icon('phone') ?><a href="tel:<?= e(preg_replace('/[^\d+]/', '', (string) setting('store_phone'))) ?>"><?= e(setting('store_phone')) ?></a></p>
-            <p class="with-icon"><?= icon('mail') ?><a href="mailto:<?= e(setting('store_email')) ?>"><?= e(setting('store_email')) ?></a></p>
-            <p class="with-icon"><?= icon('clock') ?><span><?= nl2br(e(setting('store_hours'))) ?></span></p>
-        </div>
-    </div>
-    <div class="wrap footer-bottom">
-        <span>© <?= date('Y') ?> <?= e($store) ?>. All rights reserved.</span>
-        <span class="pay-note"><?= icon('shield') ?> Secure payments · UPI · Cards · Netbanking</span>
+        <div class="foot-wordmark" aria-hidden="true"><?= e($store) ?></div>
     </div>
 </footer>
 
-<?php if ($wa): ?>
+<?php if ($wa && setting_on('whatsapp_float')): ?>
     <a class="wa-float" href="https://wa.me/<?= e($wa) ?>?text=<?= rawurlencode((string) setting('whatsapp_message')) ?>" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><?= icon('whatsapp') ?></a>
 <?php endif; ?>
 
-<!-- Mobile menu -->
-<div class="sheet sheet-left" id="sheet-menu" hidden>
-    <div class="sheet-head"><img src="<?= e(store_logo()) ?>" alt="" width="150" height="24"><button class="icon-btn" data-close aria-label="Close"><?= icon('close') ?></button></div>
-    <nav class="sheet-nav">
-        <a href="/shop/">Shop all</a>
-        <?php foreach ($cats as $c): ?><a href="<?= e(category_url($c)) ?>" class="sub"><?= e($c['name']) ?></a><?php endforeach; ?>
-        <a href="/custom-box/">Design your own box</a>
-        <a href="/corporate-gifting/">Corporate gifting</a>
-        <a href="/about/">Our story</a>
-        <?php if ($blogOn): ?><a href="/blog/">Journal</a><?php endif; ?>
-        <a href="/contact/">Contact</a>
-        <a href="/track-order/"><?= icon('truck') ?> Track your order</a>
-        <a href="/wishlist/"><?= icon('heart') ?> Wishlist</a>
-        <a href="/my-account/"><?= icon('user') ?> <?= customer() ? 'My account' : 'Log in / Sign up' ?></a>
-    </nav>
+<!-- Phone & tablet menu -->
+<div class="sheet sheet-left menu-sheet" id="sheet-menu" hidden>
+    <div class="sheet-head"><img src="<?= e(store_logo()) ?>" alt="" width="140" height="22"><button class="icon-btn" data-close aria-label="Close"><?= icon('close') ?></button></div>
+    <div class="menu-body">
+        <nav class="menu-main">
+            <a href="/" class="<?= $path === '/' ? 'on' : '' ?>" style="--i:0">Home</a>
+            <a href="/shop/" class="<?= $path === '/shop/' ? 'on' : '' ?>" style="--i:1">Shop all</a>
+            <details style="--i:2" <?= str_starts_with((string) $path, '/product-category/') ? 'open' : '' ?>>
+                <summary>Occasions <?= icon('chevron') ?></summary>
+                <div class="menu-chips">
+                    <?php foreach ($cats as $c): ?><a href="<?= e(category_url($c)) ?>"><?= e($c['name']) ?></a><?php endforeach; ?>
+                </div>
+            </details>
+            <a href="/custom-box/" style="--i:3">Design your own</a>
+            <a href="/corporate-gifting/" style="--i:4">Corporate</a>
+            <a href="/about/" style="--i:5">Our story</a>
+            <?php if ($blogOn): ?><a href="/blog/" style="--i:6">Journal</a><?php endif; ?>
+            <a href="/contact/" style="--i:7">Contact</a>
+        </nav>
+        <div class="menu-quick">
+            <a href="/track-order/"><?= icon('truck') ?><span>Track order</span></a>
+            <a href="/wishlist/"><?= icon('heart') ?><span>Wishlist</span></a>
+            <a href="/my-account/"><?= icon('user') ?><span><?= customer() ? 'Account' : 'Sign in' ?></span></a>
+        </div>
+        <div class="menu-foot">
+            <?php if ($wa): ?><a class="btn btn-block" href="https://wa.me/<?= e($wa) ?>" target="_blank" rel="noopener"><?= icon('whatsapp') ?> Chat on WhatsApp</a><?php endif; ?>
+            <a class="menu-tel" href="tel:<?= e($tel) ?>"><?= e(setting('store_phone')) ?></a>
+        </div>
+    </div>
 </div>
 
 <!-- Search -->

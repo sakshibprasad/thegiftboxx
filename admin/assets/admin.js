@@ -41,7 +41,7 @@
   var topbar = $('.topbar');
   var onScroll = function () { if (topbar) topbar.classList.toggle('scrolled', window.scrollY > 30); };
   window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  try { var saved = localStorage.getItem('admin_theme'); if (saved) document.documentElement.dataset.theme = saved; } catch (e) { }
+  try { localStorage.removeItem('admin_theme'); } catch (e) { }
   document.addEventListener('click', function (e) {
     if (!e.target.closest('[data-theme-toggle]')) return;
     var root = document.documentElement, cur = root.dataset.theme;
@@ -64,6 +64,25 @@
       if (b) setTimeout(function () { b.disabled = true; }, 0);
       window.__saving = true;
     }
+  });
+
+  /* ---------- Save without breaking the Back button ---------- */
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (e.defaultPrevented || (f.method || '').toLowerCase() !== 'post' || f.hasAttribute('data-native') || f.target) return;
+    e.preventDefault();
+    var fd = new FormData(f);
+    if (e.submitter && e.submitter.name) fd.append(e.submitter.name, e.submitter.value);
+    fetch(f.getAttribute('action') || location.href, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Admin-Fetch': '1', 'Accept': 'application/json' } })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (x) { }
+        window.__saving = true;
+        if (j && j.redirect) { location.replace(j.redirect); return; }
+        if (j && j.ok) { location.reload(); return; }
+        document.open(); document.write(t); document.close();
+      })
+      .catch(function () { f.setAttribute('data-native', ''); HTMLFormElement.prototype.submit.call(f); });
   });
 
   /* ---------- Command palette (⌘K) ---------- */
@@ -401,21 +420,14 @@
 
     // Live Google search + Shopping preview
     var prevBox = $('#previews');
-    function textOf(sel) { var el = $(sel, pf); if (!el) return ''; var t = document.createElement('div'); t.innerHTML = el.value; return (t.textContent || '').replace(/\s+/g, ' ').trim(); }
     function preview() {
       if (!prevBox) return;
       var name = nameIn.value || 'Product name';
-      var title = ($('[name=seo_title]', pf).value || name) + ' | ' + prevBox.dataset.store;
-      var desc = $('[name=seo_description]', pf).value || textOf('[name=short_description]') || textOf('[name=description]');
-      $('.serp .t', prevBox).textContent = title.length > 62 ? title.slice(0, 60) + '…' : title;
-      $('.serp .d', prevBox).textContent = desc.length > 158 ? desc.slice(0, 156) + '…' : (desc || 'Add a short description so Google shows something useful here.');
-      $('.serp small', prevBox).textContent = prevBox.dataset.site + '/product/' + (slugIn.value || 'product-name') + '/';
       $('.shop-card .t', prevBox).textContent = name;
       var prices = isVariable() ? $$('[name$="[regular_price]"]', varList).map(function (i) { return parseFloat(i.value); }).filter(function (n) { return n > 0; }) : [parseFloat($('[name=regular_price]', pf).value)];
       var sale = !isVariable() ? parseFloat($('[name=sale_price]', pf).value) : NaN;
       var min = prices.length ? Math.min.apply(null, prices) : NaN;
       $('.shop-card .p', prevBox).innerHTML = isNaN(min) ? 'Price missing' : (sale > 0 && sale < min ? money(sale) + '<del>' + money(min) + '</del>' : money(min));
-      $('.serp .meta-row', prevBox).textContent = isNaN(min) ? '' : (isVariable() && prices.length > 1 ? money(min) + ' to ' + money(Math.max.apply(null, prices)) : money(sale > 0 && sale < min ? sale : min)) + ' · In stock';
       var first = $('.gimg img', pf);
       $('.shop-card img', prevBox).src = first ? first.src : prevBox.dataset.placeholder;
     }
@@ -475,5 +487,173 @@
     $('#woo-retry') && $('#woo-retry').addEventListener('click', function () { this.hidden = true; tick(); });
     tick();
   }
+
+  /* ---------- SEO panel (focus keyword score, SERP + social previews) ---------- */
+  $$('[data-seo]').forEach(function (box) {
+    var form = box.closest('form'); if (!form) return;
+    var d = box.dataset, kind = d.kind;
+    var f = function (n) { return form.querySelector('[name="' + n + '"]'); };
+    var val = function (n) { var el = f(n); return el ? el.value.trim() : ''; };
+    var plain = function (html) { var t = document.createElement('div'); t.innerHTML = html; return (t.textContent || '').replace(/\s+/g, ' ').trim(); };
+    var norm = function (t) { return t.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9ऀ-ॿ]+/g, ' ').trim(); };
+    var has = function (hay, kw) { return kw && (' ' + norm(hay) + ' ').indexOf(' ' + norm(kw) + ' ') > -1; };
+    var trunc = function (t, n) { return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; };
+    var minWords = { product: 150, category: 80, page: 300, post: 600 }[kind] || 200;
+
+    $$('[data-seo-tab]', box).forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('[data-seo-tab]', box).forEach(function (x) { x.classList.toggle('on', x === b); });
+        $$('.seo-pane', box).forEach(function (p) { p.hidden = p.dataset.pane !== b.dataset.seoTab; });
+      });
+    });
+    $$('[data-serp]', box).forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('[data-serp]', box).forEach(function (x) { x.classList.toggle('on', x === b); });
+        $('[data-serp-box]', box).classList.toggle('mobile', b.dataset.serp === 'mobile');
+      });
+    });
+
+    function mainImage() {
+      var og = f('og_image'); if (og && og.value) { var pv = og.parentNode.querySelector('img.preview'); if (pv) return pv.src; }
+      var g = $('.gimg img', form); if (g) return g.src;
+      var c = f('cover_image') || f('image'); if (c && c.value) { var p2 = c.parentNode.querySelector('img.preview'); if (p2) return p2.src; }
+      return '';
+    }
+
+    function run() {
+      var name = val(d.nameField), kw = val('focus_keyword');
+      var bodyHtml = (f(d.bodyField) || { value: '' }).value;
+      var body = plain(bodyHtml);
+      if (kind === 'product') body = plain(val('short_description')) + ' ' + body;
+      var title = val('seo_title') || name || 'Title';
+      var fullTitle = title.indexOf(d.store) > -1 ? title : title + ' ' + d.sep + ' ' + d.store;
+      var desc = val('seo_description') || trunc(kind === 'post' ? (val('excerpt') || body) : body, 160);
+      var slug = val('slug') || norm(name).replace(/ /g, '-');
+      var url = d.host + d.base + slug + (slug ? '/' : '');
+
+      var serp = $('[data-serp-box]', box);
+      $('.t', serp).textContent = trunc(fullTitle, 62);
+      $('.d', serp).textContent = trunc(desc, 158) || 'Add a meta description so Google shows something useful here.';
+      $('.site small', serp).textContent = 'https://' + url.replace(/\/$/, '').split('/').join(' › ');
+
+      var og = $('[data-og-card]', box), img = mainImage();
+      $('.t', og).textContent = val('og_title') || title;
+      $('.d', og).textContent = trunc(val('og_description') || desc, 110);
+      $('img', og).hidden = !img; if (img) $('img', og).src = img;
+
+      var words = body ? body.split(/\s+/).length : 0;
+      var kwWords = kw ? norm(kw).split(' ').length : 1;
+      var count = 0;
+      if (kw) { var hay = ' ' + norm(body) + ' ', k = ' ' + norm(kw) + ' ', i = 0; while ((i = hay.indexOf(k, i)) > -1) { count++; i += k.length - 1; } }
+      var density = words ? count * kwWords / words * 100 : 0;
+      var first = body.split(/\s+/).slice(0, Math.max(30, Math.round(words * 0.1))).join(' ');
+      var tmp = document.createElement('div'); tmp.innerHTML = bodyHtml;
+      var heads = $$('h2,h3,h4', tmp).map(function (h) { return h.textContent; }).join(' | ');
+      var links = $$('a[href]', tmp).map(function (a) { return a.getAttribute('href'); });
+      var internal = links.some(function (h) { return h.charAt(0) === '/' || h.indexOf(d.host) > -1; });
+      var external = links.some(function (h) { return /^https?:/.test(h) && h.indexOf(d.host) < 0; });
+      var noindex = !!form.querySelector('[name="robots[]"][value=noindex]:checked');
+
+      var checks = [
+        ['Basic', 'Focus keyword is set', !!kw, 10, 'Add the phrase you want this page to rank for.'],
+        ['Basic', 'Focus keyword in the SEO title', has(title, kw), 12, 'Use it naturally in the title, ideally near the start.'],
+        ['Basic', 'Focus keyword in the meta description', has(desc, kw), 8, 'Mention it once in the description.'],
+        ['Basic', 'Focus keyword in the URL', has(slug.replace(/-/g, ' '), kw), 8, 'Put the keyword in the URL slug.'],
+        ['Basic', 'Focus keyword near the start of the content', has(first, kw), 6, 'Mention it in the first paragraph.'],
+        ['Basic', 'Focus keyword in the content', count > 0, 8, 'The text doesn’t mention the keyword yet.'],
+        ['Basic', 'Content is ' + words + ' words (aim for ' + minWords + '+)', words >= minWords, 8, 'Longer, genuinely useful text ranks better.'],
+        ['Additional', 'Keyword density ' + density.toFixed(1) + '% (' + count + ' times)', density >= 0.5 && density <= 2.5, 6, density > 2.5 ? 'Too many repeats reads unnatural. Use it less.' : 'Mention it a couple more times, naturally.'],
+        ['Additional', 'URL is short (' + url.length + ' characters)', url.length <= 75, 4, 'Keep URLs under 75 characters.'],
+        ['Additional', 'Share image set', !!img, 4, 'Add an image so shares on WhatsApp and Instagram look good.'],
+        ['Title & description', 'Title length ' + fullTitle.length + ' (50–60 ideal)', fullTitle.length >= 30 && fullTitle.length <= 65, 8, 'Google shows about 60 characters.'],
+        ['Title & description', 'Keyword at the start of the title', !!kw && norm(title).indexOf(norm(kw)) > -1 && norm(title).indexOf(norm(kw)) < norm(title).length / 2, 4, 'Move the keyword closer to the beginning.'],
+        ['Title & description', 'Description length ' + desc.length + ' (120–160 ideal)', desc.length >= 110 && desc.length <= 165, 6, 'Write one or two full sentences.'],
+      ];
+      if (kind === 'post' || kind === 'page') {
+        checks.push(['Additional', 'Keyword in a subheading', has(heads, kw), 4, 'Use it in at least one H2 or H3 heading.']);
+        checks.push(['Additional', 'Links to other pages of your site', internal, 4, 'Link to a product or category.']);
+        if (kind === 'post') checks.push(['Additional', 'Links to a helpful outside source', external, 2, 'Optional: cite a trusted source.']);
+      }
+      var sec = val('secondary_keywords');
+      if (sec) checks.push(['Additional', 'Secondary keywords used in the content', sec.split(',').filter(function (s) { return s.trim(); }).every(function (s) { return has(body, s.trim()); }), 4, 'Mention each secondary keyword at least once.']);
+
+      var total = 0, got = 0; checks.forEach(function (c) { total += c[3]; if (c[2]) got += c[3]; });
+      var score = noindex ? 0 : Math.round(got / total * 100);
+      var sc = $('[data-seo-score]', box);
+      $('b', sc).textContent = noindex ? '–' : score;
+      sc.className = 'seo-score ' + (noindex ? '' : score >= 80 ? 'good' : score >= 50 ? 'ok' : 'bad');
+      sc.title = noindex ? 'Hidden from Google (No index is ticked)' : 'SEO score';
+
+      var groups = {}, html = '';
+      checks.forEach(function (c) { (groups[c[0]] = groups[c[0]] || []).push(c); });
+      Object.keys(groups).forEach(function (g) {
+        var fails = groups[g].filter(function (c) { return !c[2]; }).length;
+        html += '<details' + (fails ? ' open' : '') + '><summary>' + g + (fails ? '<span class="badge-err">' + fails + ' to fix</span>' : '<span class="badge-ok">All good</span>') + '</summary><ul>';
+        groups[g].forEach(function (c) { html += '<li class="' + (c[2] ? 'pass' : 'fail') + '"><i></i><span>' + esc(c[1]) + (c[2] ? '' : '<small>' + esc(c[4]) + '</small>') + '</span></li>'; });
+        html += '</ul></details>';
+      });
+      var list = $('[data-seo-checks]', box), open = $$('details', list).map(function (x) { return x.open; });
+      list.innerHTML = html;
+      if (open.length) $$('details', list).forEach(function (x, i) { x.open = open[i]; });
+    }
+    var t; var queue = function () { clearTimeout(t); t = setTimeout(run, 150); };
+    form.addEventListener('input', queue); form.addEventListener('change', queue); form.addEventListener('gallery:change', queue);
+    run();
+  });
+
+  /* ---------- Guided setup wizards ---------- */
+  $$('dialog[data-wizard]').forEach(function (dlg) {
+    var steps = $$('.wz-step', dlg), i = 0, busy = false, changed = false;
+    var back = $('[data-wz-back]', dlg), next = $('[data-wz-next]', dlg), nextLabel = next.innerHTML;
+    function show(n) {
+      i = n;
+      steps.forEach(function (s, k) { s.hidden = k !== i; });
+      $('[data-wz-count]', dlg).textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
+      $('.wz-progress span', dlg).style.width = Math.round((i + 1) / steps.length * 100) + '%';
+      back.hidden = i === 0;
+      next.innerHTML = i === steps.length - 1 ? 'Finish' : nextLabel;
+      $('.wz-steps', dlg).scrollTop = 0;
+    }
+    function saveStep() {
+      var forms = $$('form[data-wz-save]', steps[i]);
+      return forms.reduce(function (p, f) {
+        return p.then(function () {
+          var fd = new FormData(f); fd.append('_only', f.dataset.only);
+          return post(f.dataset.wzSave, fd).then(function (r) { if (!r || !r.ok) throw new Error((r && (r.error || r.message)) || 'Could not save'); changed = true; });
+        });
+      }, Promise.resolve());
+    }
+    next.addEventListener('click', function () {
+      if (busy) return; busy = true; next.disabled = true;
+      saveStep().then(function () {
+        if ($$('form[data-wz-save]', steps[i]).length) toast('Saved');
+        if (i < steps.length - 1) show(i + 1); else { dlg.close(); }
+      }).catch(function (e) { toast(e.message, false); })
+        .finally(function () { busy = false; next.disabled = false; });
+    });
+    back.addEventListener('click', function () { if (i > 0) show(i - 1); });
+    $('[data-wz-close]', dlg).addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener('submit', function (e) { e.preventDefault(); next.click(); });
+    dlg.addEventListener('close', function () { if (location.hash === '#' + dlg.dataset.wizard) history.replaceState(null, '', location.pathname); if (changed) location.reload(); });
+    $$('[data-wz-test]', dlg).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var out = $('[data-wz-result]', b.parentNode), label = b.innerHTML;
+        b.disabled = true; b.textContent = 'Checking…';
+        saveStep().then(function () { return post(b.dataset.wzTest, {}); }).then(function (r) {
+          out.hidden = false; out.className = 'wz-result ' + (r.ok ? 'ok' : 'err');
+          out.textContent = (r.ok ? '✓ ' : '✕ ') + (r.message || (r.ok ? 'Works!' : 'That didn’t work.'));
+        }).catch(function (e) { out.hidden = false; out.className = 'wz-result err'; out.textContent = e.message; })
+          .finally(function () { b.disabled = false; b.innerHTML = label; });
+      });
+    });
+    dlg._open = function () { show(0); changed = false; dlg.showModal(); };
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-wz-open]'); if (!b) return;
+    var d = document.getElementById('wz-' + b.dataset.wzOpen); if (d && d._open) { history.replaceState(null, '', '#' + b.dataset.wzOpen); d._open(); }
+  });
+  function openFromHash() { var wz = location.hash && document.getElementById('wz-' + location.hash.slice(1)); if (wz && wz._open && !wz.open) wz._open(); }
+  openFromHash(); window.addEventListener('hashchange', openFromHash);
 
 })();

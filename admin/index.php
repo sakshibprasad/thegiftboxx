@@ -42,6 +42,9 @@ if (app_installed() && PHP_SAPI !== 'cli-server') {
     }
 }
 
+if (app_installed()) {
+    run_migrations();
+}
 start_session('tgb_admin');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
