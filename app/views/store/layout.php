@@ -3,8 +3,7 @@
 $store = setting('store_name');
 $headingFont = setting('theme_heading_font');
 $bodyFont = setting('theme_body_font');
-$fontsUrl = 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $headingFont) . ':ital,wght@0,400;0,500;0,600;1,400;1,500'
-    . ($bodyFont !== $headingFont ? '&family=' . str_replace(' ', '+', $bodyFont) . ':wght@300;400;500;600' : '') . '&display=swap';
+$fontsUrl = google_fonts_url((string) $headingFont, (string) $bodyFont);
 $cats = array_values(array_filter(categories_all(), fn($c) => !$c['parent_id'] && $c['product_count'] > 0));
 $cartCount = cart_count();
 $wishCount = count(wishlist_ids());
@@ -150,7 +149,6 @@ $footImg = $footImg ? image_url($footImg, 'lg') : '/assets/img/hero-2.jpg'; ?>
                 <span class="pay-note"><?= icon('shield') ?> Secure payments</span>
             </div>
         </div>
-        <div class="foot-wordmark" aria-hidden="true"><?= e($store) ?></div>
     </div>
 </footer>
 

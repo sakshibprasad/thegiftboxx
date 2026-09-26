@@ -2,7 +2,7 @@
 <html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e(setting('maintenance_title')) ?> | <?= e(setting('store_name')) ?></title><meta name="robots" content="noindex">
 <link rel="icon" href="/assets/img/favicon-32.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=<?= e(str_replace(' ', '+', setting('theme_heading_font'))) ?>:wght@400;500&family=<?= e(str_replace(' ', '+', setting('theme_body_font'))) ?>:wght@400;500&display=swap">
+<link rel="stylesheet" href="<?= e(google_fonts_url((string) setting('theme_heading_font'), (string) setting('theme_body_font'))) ?>">
 <link rel="stylesheet" href="<?= asset('css/store.css') ?>">
 <style>:root{--bg:<?= e(setting('theme_bg')) ?>;--ink:<?= e(setting('theme_text')) ?>;--accent:<?= e(setting('theme_accent')) ?>;--dark:<?= e(setting('theme_dark')) ?>;--font-head:'<?= e(setting('theme_heading_font')) ?>',serif;--font-body:'<?= e(setting('theme_body_font')) ?>',system-ui,sans-serif}</style>
 </head><body>

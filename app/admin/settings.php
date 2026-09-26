@@ -180,8 +180,23 @@ function admin_channel_test(string $which): void
 function admin_import(): void
 {
     require_admin(true);
-    admin_view('import', ['state' => woo_state(), 'wooUrl' => setting('woo_url', ''), 'hasKeys' => (bool) setting('woo_key', ''),
+    admin_view('import', ['missingImages' => count(images_missing()), 'state' => woo_state(), 'wooUrl' => setting('woo_url', ''), 'hasKeys' => (bool) setting('woo_key', ''),
         'seedAvailable' => is_file(APP_DIR . '/seed/woocommerce-products.csv')], 'Import', 'import');
+}
+
+function admin_import_repair_images(): void
+{
+    require_admin(true);
+    $s = repair_missing_images();
+    if (!$s['missing']) {
+        flash('success', 'All photos are in place — nothing to restore.');
+    } elseif (!$s['failed']) {
+        flash('success', "Restored {$s['restored']} photos.");
+    } else {
+        flash($s['restored'] ? 'success' : 'error', "Restored {$s['restored']} of {$s['missing']} photos. " . count($s['failed'])
+            . ' could not be found on the old website — upload those again on the product page.');
+    }
+    redirect('/import');
 }
 
 function admin_import_csv(): void

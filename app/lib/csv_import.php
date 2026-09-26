@@ -212,3 +212,83 @@ function import_seed_products(bool $downloadImages = true): array
     $map = json_decode((string) @file_get_contents(APP_DIR . '/seed/slugs.json'), true) ?: [];
     return import_woo_csv(APP_DIR . '/seed/woocommerce-products.csv', $downloadImages, $map);
 }
+
+/* ---------------- Restore photos whose files went missing ---------------- */
+
+/** Image paths the site uses whose file is no longer in the uploads folder. */
+function images_missing(): array
+{
+    $paths = array_column(all('SELECT DISTINCT path FROM product_images'), 'path');
+    foreach (['categories' => 'image', 'posts' => 'cover_image'] as $t => $c) {
+        $paths = array_merge($paths, array_column(all("SELECT {$c} AS p FROM {$t} WHERE {$c} IS NOT NULL AND {$c} <> ''"), 'p'));
+    }
+    $dir = uploads_dir();
+    return array_values(array_unique(array_filter($paths, fn($p) => $p && !preg_match('#^https?://#', $p) && !is_file($dir . '/' . $p))));
+}
+
+/** The name an image had on the old site, as used in our stored file name. */
+function image_key(string $name): string
+{
+    return substr(slugify(pathinfo($name, PATHINFO_FILENAME)), 0, 60);
+}
+
+/**
+ * Download missing photos again from the old WooCommerce site and put them
+ * back at exactly the same place, so nothing else needs to change.
+ */
+function repair_missing_images(int $limit = 400): array
+{
+    @set_time_limit(900);
+    $missing = array_slice(images_missing(), 0, $limit);
+    $stats = ['missing' => count($missing), 'restored' => 0, 'failed' => []];
+    if (!$missing) {
+        return $stats;
+    }
+    // Original URLs from the bundled product export.
+    $urls = [];
+    $csv = APP_DIR . '/seed/woocommerce-products.csv';
+    if (is_file($csv) && ($fh = fopen($csv, 'r'))) {
+        $head = fgetcsv($fh, 0, ',', '"', '\\');
+        $col = $head ? array_search('Images', array_map(fn($h) => trim((string) $h, "\xEF\xBB\xBF \""), $head), true) : false;
+        while ($col !== false && ($row = fgetcsv($fh, 0, ',', '"', '\\')) !== false) {
+            foreach (array_filter(array_map('trim', explode(',', (string) ($row[$col] ?? '')))) as $u) {
+                $urls[image_key(basename((string) parse_url($u, PHP_URL_PATH)))] = $u;
+            }
+        }
+        fclose($fh);
+    }
+    $wp = rtrim((string) setting('woo_url', 'https://thegiftboxx.com'), '/');
+    foreach ($missing as $path) {
+        $key = preg_replace('/-[0-9a-f]{6}$/', '', pathinfo($path, PATHINFO_FILENAME));
+        $url = $urls[$key] ?? null;
+        if (!$url && $wp) {
+            // Ask the old WordPress media library (public, no keys needed).
+            $res = http_request('GET', $wp . '/wp-json/wp/v2/media?per_page=10&search=' . rawurlencode(str_replace('-', ' ', substr($key, 0, 40))), [], null, 20);
+            foreach ((array) json_decode((string) $res['body'], true) as $m) {
+                $src = (string) ($m['source_url'] ?? '');
+                if ($src && image_key(basename((string) parse_url($src, PHP_URL_PATH))) === $key) {
+                    $url = $src;
+                    break;
+                }
+            }
+        }
+        $res = $url ? http_request('GET', $url, [], null, 60) : ['status' => 0, 'body' => ''];
+        if ($res['status'] !== 200 || strlen((string) $res['body']) < 100) {
+            $stats['failed'][] = $path;
+            continue;
+        }
+        $dest = uploads_dir() . '/' . $path;
+        @mkdir(dirname($dest), 0775, true);
+        if (file_put_contents($dest, $res['body']) === false) {
+            $stats['failed'][] = $path;
+            continue;
+        }
+        @chmod($dest, 0644);
+        if (!preg_match('/\.(svg|gif)$/i', $path)) {
+            make_image_variants($dest);
+        }
+        $stats['restored']++;
+    }
+    ensure_uploads_protected();
+    return $stats;
+}

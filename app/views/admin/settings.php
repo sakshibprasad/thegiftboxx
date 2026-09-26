@@ -1,11 +1,11 @@
 <?php /** @var string $group @var array $schema @var array $def @var string $cronUrl @var string $previewUrl */
 $tests = ['payments' => [['/settings-test/payu', 'Test PayU'], ['/settings-test/cashfree', 'Test Cashfree']], 'shipping' => [['/settings-test/shiprocket', 'Test Shiprocket']], 'email' => [['/settings-test/email', 'Send test email']]];
 $guides = ['payments' => ['payu' => 'PayU', 'cashfree' => 'Cashfree'], 'shipping' => ['shiprocket' => 'Shiprocket'], 'email' => ['email' => 'Order emails', 'cron' => 'Scheduled tasks'],
-    'integrations' => ['ga4' => 'Analytics', 'gsc' => 'Search Console', 'gads' => 'Google Ads', 'gmc' => 'Merchant Center', 'meta' => 'Meta', 'pinterest' => 'Pinterest', 'whatsapp' => 'WhatsApp', 'code' => 'Header code'], 'website' => ['seo' => 'SEO basics']];
+    'integrations' => ['ga4' => 'Analytics', 'gsc' => 'Search Console', 'gads' => 'Google Ads', 'gmc' => 'Merchant Center', 'meta' => 'Meta', 'pinterest' => 'Pinterest', 'whatsapp' => 'WhatsApp', 'code' => 'Header code', 'google_login' => 'Google sign-in'], 'website' => ['seo' => 'SEO basics']];
 $sections = [
     'payments' => ['payu_' => 'PayU', 'cashfree_' => 'Cashfree', 'cod_' => 'Cash on Delivery'],
     'shipping' => ['shipping_' => 'Delivery charges', 'delivery_' => 'Checkout', 'gift_' => 'Checkout', 'shiprocket_' => 'Shiprocket', 'pincode_' => 'Product page'],
-    'integrations' => ['ga4_' => 'Google', 'gsc_' => 'Google', 'gtm_' => 'Google', 'gads_' => 'Google', 'gmc_' => 'Google', 'meta_' => 'Meta (Facebook & Instagram)', 'pinterest_' => 'Pinterest', 'bing_' => 'Bing', 'whatsapp_' => 'WhatsApp', 'header_' => 'Header & footer code', 'footer_' => 'Header & footer code'],
+    'integrations' => ['ga4_' => 'Google', 'gsc_' => 'Google', 'gtm_' => 'Google', 'gads_' => 'Google', 'gmc_' => 'Google', 'google_' => 'Google sign-in', 'meta_' => 'Meta (Facebook & Instagram)', 'pinterest_' => 'Pinterest', 'bing_' => 'Bing', 'whatsapp_' => 'WhatsApp', 'header_' => 'Header & footer code', 'footer_' => 'Header & footer code'],
     'email' => ['smtp_' => 'Outgoing email (SMTP)', 'mail_' => 'Outgoing email (SMTP)', 'abandoned_' => 'Abandoned cart reminders'],
     'website' => ['maintenance_' => 'Maintenance mode', 'checkout_' => 'Holiday mode', 'logo_' => 'Branding', 'og_' => 'Branding', 'favicon' => 'Branding', 'footer_' => 'Footer',
         'seo_' => 'Google (SEO)', 'noindex_' => 'Google (SEO)', 'min_order' => 'Checkout', 'guest_' => 'Checkout', 'search_' => 'Features', 'product_' => 'Features', 'related_' => 'Features',

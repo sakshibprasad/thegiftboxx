@@ -138,6 +138,10 @@ function settings_schema(): array
                 'bing_verification' => ['label' => 'Bing site verification', 'type' => 'text', 'placeholder' => '<meta name="msvalidate.01" content="…">', 'help' => 'Paste the whole meta tag or just the code.'],
                 'whatsapp_number' => ['label' => 'WhatsApp number (with country code, digits only)', 'type' => 'text', 'default' => '917710970512'],
                 'whatsapp_message' => ['label' => 'WhatsApp default message', 'type' => 'text', 'default' => 'Hi! I would like to know more about your gift boxes.'],
+                'google_login_enabled' => ['label' => 'Show “Continue with Google” on the login pages', 'type' => 'bool', 'default' => '0', 'help' => 'Optional for customers — guest checkout stays as it is.'],
+                'google_client_id' => ['label' => 'Google sign-in Client ID', 'type' => 'text', 'placeholder' => '1234567890-abc.apps.googleusercontent.com'],
+                'google_client_secret' => ['label' => 'Google sign-in Client secret', 'type' => 'secret'],
+                'google_admin_login' => ['label' => 'Also allow Google sign-in for the admin (team members only)', 'type' => 'bool', 'default' => '1'],
                 'header_code' => ['label' => 'Header code — added inside <head> on every page', 'type' => 'code', 'help' => 'For any other verification tag or tracking script (Microsoft Clarity, Hotjar, a second pixel…). Google, Meta, Pinterest and Bing have their own boxes above — use those instead so nothing loads twice.'],
                 'footer_code' => ['label' => 'Footer code — added just before </body>', 'type' => 'code', 'help' => 'For chat widgets and scripts that ask to go at the end of the page.'],
             ],
@@ -228,12 +232,96 @@ function secret_hint(string $key): string
     return str_repeat('•', 8) . substr($v, -4);
 }
 
+/**
+ * Google Fonts offered in Appearance. Each entry: [style shown in the list, weights to load].
+ * Weights must exist for that font, or Google refuses the whole request.
+ */
+function font_catalog(): array
+{
+    $serif = 'ital,wght@0,400;0,500;0,600;1,400;1,500';
+    $sans = 'wght@300;400;500;600';
+    return [
+        'heading' => [
+            'Cormorant Garamond' => ['Elegant serif (current)', $serif],
+            'Cormorant' => ['Elegant serif, sharper', $serif],
+            'Playfair Display' => ['Classic high-contrast serif', $serif],
+            'Bodoni Moda' => ['Fashion-magazine serif', $serif],
+            'EB Garamond' => ['Timeless book serif', $serif],
+            'Fraunces' => ['Soft, warm serif', $serif],
+            'Newsreader' => ['Refined editorial serif', $serif],
+            'Lora' => ['Friendly serif', $serif],
+            'Spectral' => ['Light literary serif', $serif],
+            'Crimson Pro' => ['Traditional serif', $serif],
+            'Libre Baskerville' => ['Bookish serif', 'ital,wght@0,400;0,700;1,400'],
+            'DM Serif Display' => ['Bold display serif', 'ital@0;1'],
+            'Instrument Serif' => ['Tall, modern serif', 'ital@0;1'],
+            'Gilda Display' => ['Luxury thin serif', ''],
+            'Prata' => ['Couture serif', ''],
+            'Gloock' => ['Heavy editorial serif', ''],
+            'Italiana' => ['Airy fashion serif', ''],
+            'Marcellus' => ['Roman-inspired serif', ''],
+            'Cinzel' => ['Engraved capitals', 'wght@400;500;600'],
+            'Bellefair' => ['Delicate serif', ''],
+            'Tenor Sans' => ['Elegant sans', ''],
+            'Josefin Sans' => ['Geometric vintage sans', 'wght@300;400;500;600'],
+            'Jost' => ['Clean geometric sans', $sans],
+            'Poppins' => ['Rounded modern sans', $sans],
+            'Montserrat' => ['Bold urban sans', $sans],
+            'Inter' => ['Neutral modern sans', $sans],
+            'Manrope' => ['Soft modern sans', $sans],
+        ],
+        'body' => [
+            'Inter' => ['Neutral, very readable (current)', $sans],
+            'Manrope' => ['Soft modern sans', $sans],
+            'DM Sans' => ['Friendly geometric sans', $sans],
+            'Jost' => ['Clean geometric sans', $sans],
+            'Outfit' => ['Rounded modern sans', $sans],
+            'Figtree' => ['Warm, friendly sans', $sans],
+            'Plus Jakarta Sans' => ['Premium modern sans', $sans],
+            'Albert Sans' => ['Scandinavian-style sans', $sans],
+            'Hanken Grotesk' => ['Crisp grotesk', $sans],
+            'Urbanist' => ['Geometric, airy sans', $sans],
+            'Poppins' => ['Rounded geometric sans', $sans],
+            'Montserrat' => ['Wide urban sans', $sans],
+            'Raleway' => ['Elegant thin sans', $sans],
+            'Mulish' => ['Minimal sans', $sans],
+            'Karla' => ['Quirky grotesk', $sans],
+            'Work Sans' => ['Practical sans', $sans],
+            'Nunito Sans' => ['Soft rounded sans', $sans],
+            'Source Sans 3' => ['Classic readable sans', $sans],
+            'Open Sans' => ['Everyday sans', $sans],
+            'Lato' => ['Warm classic sans', 'wght@300;400;700'],
+            'Josefin Sans' => ['Vintage geometric sans', $sans],
+            'EB Garamond' => ['Serif body text', 'wght@400;500;600'],
+            'Lora' => ['Serif body text, friendly', 'wght@400;500;600'],
+            'Crimson Pro' => ['Serif body text, traditional', $sans],
+        ],
+    ];
+}
+
 function font_options(string $set): array
 {
-    $heading = ['Cormorant Garamond', 'Playfair Display', 'Fraunces', 'DM Serif Display', 'Libre Baskerville', 'Italiana', 'Marcellus', 'Inter', 'Manrope'];
-    $body = ['Inter', 'Manrope', 'DM Sans', 'Jost', 'Outfit', 'Lato', 'Nunito Sans', 'Work Sans', 'Source Sans 3'];
-    $list = $set === 'heading_fonts' ? $heading : $body;
-    return array_combine($list, $list);
+    $list = font_catalog()[$set === 'heading_fonts' ? 'heading' : 'body'];
+    $out = [];
+    foreach ($list as $name => [$style]) {
+        $out[$name] = $name . ' — ' . $style;
+    }
+    return $out;
+}
+
+/** Stylesheet URL for the chosen fonts, asking only for weights each font has. */
+function google_fonts_url(string $heading, string $body): string
+{
+    $cat = font_catalog();
+    $fam = function (string $name, string $set) use ($cat): string {
+        $spec = $cat[$set][$name][1] ?? ($cat['heading'][$name][1] ?? $cat['body'][$name][1] ?? '');
+        return 'family=' . str_replace(' ', '+', $name) . ($spec !== '' ? ':' . $spec : '');
+    };
+    $parts = [$fam($heading, 'heading')];
+    if ($body !== $heading) {
+        $parts[] = $fam($body, 'body');
+    }
+    return 'https://fonts.googleapis.com/css2?' . implode('&', $parts) . '&display=swap';
 }
 
 function field_options(array $field): array

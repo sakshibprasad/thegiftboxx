@@ -27,8 +27,10 @@ function run_migrations(): void
             }
             setting_set('schema_version', (string) $v);
         }
+        setting_set('migration_error', '');
     } catch (Throwable $e) {
         app_log('migrate', 'upgrade failed', ['error' => $e->getMessage()]);
+        setting_set('migration_error', 'Step ' . ($v ?? '?') . ': ' . $e->getMessage());
     } finally {
         if ($fh) {
             flock($fh, LOCK_UN);
@@ -47,7 +49,7 @@ function column_exists(string $table, string $column): bool
         }
         return false;
     }
-    return (bool) one("SHOW COLUMNS FROM {$table} LIKE ?", [$column]);
+    return (bool) val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column]);
 }
 
 function add_column(string $table, string $column, string $definition): void
@@ -142,6 +144,7 @@ function migration_scrub_home(): void
 function migration_3(): void
 {
     migration_scrub_home();
+    ensure_uploads_protected();
     $about = one("SELECT id, content FROM pages WHERE slug = 'about'");
     if ($about && str_contains((string) $about['content'], '6–10 items')) {
         update('pages', ['content' => clean_html(default_pages()['about'][1] ?? $about['content'])], 'id = ?', [$about['id']]);

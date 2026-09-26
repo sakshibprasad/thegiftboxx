@@ -2,6 +2,10 @@
 <section class="section auth">
     <div class="wrap auth-wrap">
         <div class="auth-card">
+            <?php if (google_login_ready()): ?>
+                <a class="btn btn-ghost btn-lg btn-block google-btn" href="/auth/google/<?= !empty($next) ? '?next=' . rawurlencode($next) : '' ?>"><?= google_icon() ?> Continue with Google</a>
+                <div class="or-line"><span>or use your email</span></div>
+            <?php endif; ?>
             <div class="tabs" role="tablist">
                 <button role="tab" data-tab="login" class="<?= $tab === 'login' ? 'on' : '' ?>">Log in</button>
                 <button role="tab" data-tab="register" class="<?= $tab === 'register' ? 'on' : '' ?>">Create account</button>

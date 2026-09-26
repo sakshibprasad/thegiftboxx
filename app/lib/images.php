@@ -79,6 +79,7 @@ function store_image_file(string $tmp, string $originalName, bool $isUpload): st
             throw new RuntimeException('This SVG contains scripts and was rejected.');
         }
     }
+    ensure_uploads_protected();
     $sub = date('Y/m');
     $dir = uploads_dir() . '/' . $sub;
     if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
@@ -143,4 +144,13 @@ function delete_image_files(string $rel): void
 function asset_placeholder(): string
 {
     return site_url('assets/img/placeholder.svg');
+}
+
+/** The uploads folder must never run scripts. Recreate the rule if it went missing. */
+function ensure_uploads_protected(): void
+{
+    $dir = uploads_dir();
+    if ($dir && is_dir($dir) && !is_file($dir . '/.htaccess')) {
+        @file_put_contents($dir . '/.htaccess', "# Never run scripts from the uploads folder\n<FilesMatch \"\\.(php|phtml|php\\d|phar|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\nOptions -Indexes -ExecCGI\n");
+    }
 }

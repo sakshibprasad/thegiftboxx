@@ -19,6 +19,8 @@ function admin_dispatch(string $method, string $path): void
     $routes = [
         ['GET', '#^/login$#', 'admin_login_form', false],
         ['POST', '#^/login$#', 'admin_login', false],
+        ['GET', '#^/auth/google$#', 'admin_google_start', false],
+        ['GET', '#^/auth/google/callback$#', 'admin_google_callback', false],
         ['GET', '#^/logout$#', 'admin_logout', false],
         ['GET', '#^/manifest\.webmanifest$#', 'admin_manifest', false],
         ['GET', '#^/$#', 'admin_dashboard'],
@@ -88,6 +90,7 @@ function admin_dispatch(string $method, string $path): void
         ['POST', '#^/channels/test/(ga4|meta)$#', 'admin_channel_test'],
         ['GET', '#^/import$#', 'admin_import'],
         ['POST', '#^/import/csv$#', 'admin_import_csv'],
+        ['POST', '#^/import/repair-images$#', 'admin_import_repair_images'],
         ['POST', '#^/import/woo/start$#', 'admin_import_woo_start'],
         ['POST', '#^/import/woo/step$#', 'admin_import_woo_step'],
         ['POST', '#^/import/woo/reset$#', 'admin_import_woo_reset'],
@@ -235,6 +238,32 @@ function admin_login(): void
     $_SESSION['admin_id'] = (int) $u['id'];
     $next = (string) input('next');
     redirect(preg_match('#^/[a-z0-9/_-]*$#i', $next) ? $next : '/');
+}
+
+function admin_google_start(): void
+{
+    if (!setting_on('google_admin_login')) {
+        redirect('/login');
+    }
+    google_auth_start('admin', (string) input('next'));
+}
+
+/** Google sign-in for the admin: only people already added under Team. */
+function admin_google_callback(): void
+{
+    try {
+        $g = google_auth_finish('admin');
+        $u = setting_on('google_admin_login') ? one("SELECT * FROM users WHERE email = ? AND role IN ('admin', 'manager')", [$g['email']]) : null;
+        if (!$u) {
+            throw new RuntimeException($g['email'] . ' isn’t on your team. Sign in with your password, or ask an administrator to add this email under Team.');
+        }
+    } catch (Throwable $e) {
+        flash('error', $e->getMessage());
+        redirect('/login');
+    }
+    session_regenerate_id(true);
+    $_SESSION['admin_id'] = (int) $u['id'];
+    redirect(preg_match('#^/[a-z0-9/_-]*$#i', $g['next']) ? $g['next'] : '/');
 }
 
 function admin_logout(): void

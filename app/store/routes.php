@@ -41,6 +41,8 @@ function store_dispatch(string $method, string $path): void
         ['GET', '#^/restore-cart/([a-f0-9]+)/$#', 'action_restore_cart'],
         ['GET', '#^/my-account/$#', 'page_account'],
         ['POST', '#^/my-account/login$#', 'action_login'],
+        ['GET', '#^/auth/google/$#', 'page_google_start'],
+        ['GET', '#^/auth/google/callback/$#', 'page_google_callback'],
         ['POST', '#^/my-account/register$#', 'action_register'],
         ['POST', '#^/my-account/details$#', 'action_account_details'],
         ['GET', '#^/my-account/logout/$#', 'action_logout'],
@@ -702,6 +704,35 @@ function action_login(): void
     customer_login($user);
     wishlist_merge((int) $user['id']);
     redirect(safe_next((string) input('next')));
+}
+
+function page_google_start(): void
+{
+    google_auth_start('store', safe_next((string) input('next')));
+}
+
+/** Google sign-in for customers: opens their account, or creates one (no password needed). */
+function page_google_callback(): void
+{
+    try {
+        $g = google_auth_finish('store');
+    } catch (Throwable $e) {
+        flash('error', $e->getMessage());
+        redirect('/my-account/');
+    }
+    $user = one('SELECT * FROM users WHERE email = ?', [$g['email']]);
+    $isNew = !$user;
+    if ($isNew) {
+        $id = insert('users', ['email' => $g['email'], 'password_hash' => password_hash(random_token(24), PASSWORD_DEFAULT),
+            'name' => $g['name'] ?: explode('@', $g['email'])[0], 'role' => 'customer', 'created_at' => now()]);
+        $user = ['id' => $id, 'name' => $g['name']];
+    }
+    session_regenerate_id(true);
+    customer_login($user);
+    wishlist_merge((int) $user['id']);
+    $first = explode(' ', trim((string) ($user['name'] ?: $g['name'])))[0];
+    flash('success', $isNew ? 'Welcome to ' . setting('store_name') . ($first ? ', ' . $first : '') . '!' : 'Welcome back' . ($first ? ', ' . $first : '') . '!');
+    redirect(safe_next($g['next']));
 }
 
 function action_register(): void

@@ -41,11 +41,11 @@
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    }, { rootMargin: '0px 0px -4% 0px', threshold: 0.01 });
     reveals.forEach(function (el) { io.observe(el); });
   } else { reveals.forEach(function (el) { el.classList.add('in'); }); }
   var parallax = $$('.parallax');
-  if (parallax.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (parallax.length && !matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(hover: hover) and (min-width: 1025px)').matches) {
     var ticking = false;
     window.addEventListener('scroll', function () {
       if (ticking) return; ticking = true;

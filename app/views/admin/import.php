@@ -3,6 +3,13 @@ $running = input('run') === '1' || ($state['step'] ?? 'categories') !== 'categor
 $done = ($state['step'] ?? '') === 'done';
 ?>
 <div class="page-head"><div><h1>Import</h1><p>Bring everything over from your old WooCommerce store. Safe to run more than once — nothing gets duplicated.</p></div></div>
+<?php if (!empty($missingImages)): ?>
+<form class="card pad" method="post" action="/import/repair-images" style="margin-bottom:16px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <?= csrf_field() ?>
+    <div><h2 style="margin:0 0 4px"><?= (int) $missingImages ?> photos are missing</h2><p class="muted" style="margin:0">Their files aren’t in the uploads folder any more. We can download them again from your old website and put them back.</p></div>
+    <button class="btn" data-busy="Restoring… this can take a few minutes"><?= icon('refresh') ?> Restore missing photos</button>
+</form>
+<?php endif; ?>
 <div class="grid g2">
     <div class="card pad fields">
         <h2 style="margin:0">Full migration from WooCommerce</h2>

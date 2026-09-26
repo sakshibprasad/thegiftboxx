@@ -25,7 +25,7 @@ $chosen = old('payment_method', $firstMethod);
                         <label>Mobile number<input type="tel" name="phone" required autocomplete="tel" inputmode="tel" placeholder="10-digit mobile" value="<?= e($v('phone')) ?>" data-capture></label>
                     </div>
                     <?php if (!customer()): ?>
-                        <p class="small muted">Have an account? <a href="/my-account/?next=/checkout/">Log in</a> for faster checkout.</p>
+                        <p class="small muted">Have an account? <a href="/my-account/?next=/checkout/">Log in</a><?php if (google_login_ready()): ?> or <a href="/auth/google/?next=/checkout/">continue with Google</a><?php endif; ?> for faster checkout — or just carry on as a guest.</p>
                     <?php endif; ?>
                 </fieldset>
 

@@ -26,7 +26,7 @@ foreach ([
 ] as $lib) {
     require APP_DIR . "/lib/{$lib}.php";
 }
-foreach (['http', 'payu', 'cashfree', 'shiprocket', 'meta_capi', 'woo_import'] as $int) {
+foreach (['http', 'payu', 'cashfree', 'shiprocket', 'meta_capi', 'woo_import', 'google_login'] as $int) {
     require APP_DIR . "/integrations/{$int}.php";
 }
 

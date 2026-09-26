@@ -67,7 +67,7 @@ $tabs = [['/', 'Home', 'home', 'dashboard'], ['/orders', 'Orders', 'orders', 'or
             <?php if ($undo && $i === 0 && $f['type'] === 'success' && ($u['role'] ?? '') === 'admin'): ?><form method="post" action="/activity/<?= (int) $undo ?>/revert" class="toast-undo"><?= csrf_field() ?><button class="btn plain sm">Undo</button></form><?php endif; ?>
         </div><?php endforeach; ?>
     </div>
-    <div class="content"><?= $content ?></div>
+    <div class="content"><?php if (setting('migration_error', '') !== '' && (admin_user()['role'] ?? '') === 'admin'): ?><div class="notice warn" style="margin-bottom:16px"><strong>Database upgrade didn’t finish.</strong> <?= e(setting('migration_error')) ?> — reload this page to try again. If this stays, send this message to your developer.</div><?php endif; ?><?= $content ?></div>
 </main>
 
 <?php if ($u): ?>

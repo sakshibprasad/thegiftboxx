@@ -609,3 +609,10 @@ dialog.wizard::backdrop { background: rgba(0, 0, 0, .35); backdrop-filter: blur(
 .guide-strip .chip { padding: 5px 12px; border-radius: 999px; background: var(--fill); color: var(--ink); font-size: 13px; text-decoration: none; }
 .guide-strip .chip:hover { background: var(--accent); color: #fff; }
 .wz-fields .badge, .group .row.col > .badge { align-self: flex-start; }
+.notice { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); font-size: 14px; }
+.notice.warn { background: rgba(255, 159, 10, .12); color: #7a4a00; box-shadow: none; }
+.notice svg { width: 18px; height: 18px; flex: none; }
+.notice .link { color: var(--accent); font-weight: 500; }
+.auth-card .google-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.auth-card .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
+.auth-card .or-line::before, .auth-card .or-line::after { content: ''; flex: 1; height: 1px; background: var(--line); }

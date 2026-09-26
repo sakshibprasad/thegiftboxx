@@ -464,7 +464,7 @@
       ap.style.setProperty('--p-head', "'" + get('theme_heading_font') + "', Georgia, serif"); ap.style.setProperty('--p-body', "'" + get('theme_body_font') + "', sans-serif");
       var fonts = [get('theme_heading_font'), get('theme_body_font')].filter(function (v, i, a) { return v && a.indexOf(v) === i; });
       var id = 'preview-fonts', link = document.getElementById(id) || document.head.appendChild(Object.assign(document.createElement('link'), { id: id, rel: 'stylesheet' }));
-      link.href = 'https://fonts.googleapis.com/css2?' + fonts.map(function (f) { return 'family=' + f.replace(/ /g, '+') + ':wght@400;500;600'; }).join('&') + '&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?' + fonts.map(function (f) { return 'family=' + f.replace(/ /g, '+'); }).join('&') + '&display=swap';
       if (get('admin_accent')) document.documentElement.style.setProperty('--accent', get('admin_accent'));
     };
     form.addEventListener('input', sync); form.addEventListener('change', sync); sync();
@@ -655,5 +655,11 @@
   });
   function openFromHash() { var wz = location.hash && document.getElementById('wz-' + location.hash.slice(1)); if (wz && wz._open && !wz.open) wz._open(); }
   openFromHash(); window.addEventListener('hashchange', openFromHash);
+
+  /* ---------- Long actions: show progress on the button ---------- */
+  document.addEventListener('submit', function (e) {
+    var b = e.target.querySelector('[data-busy]'); if (!b) return;
+    setTimeout(function () { b.disabled = true; b.textContent = b.dataset.busy; }, 0);
+  }, true);
 
 })();

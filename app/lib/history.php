@@ -120,7 +120,8 @@ function history_restore(string $type, $id, ?array $snap): void
 function history_log(string $action, string $type, $id, string $summary, ?array $snapshot = null, bool $revertible = true): int
 {
     $u = function_exists('admin_user') ? admin_user() : null;
-    $logId = insert('activity_log', [
+    try {
+        $logId = (int) insert('activity_log', [
         'user_id' => $u['id'] ?? null,
         'user_name' => $u['name'] ?? '',
         'action' => $action,
@@ -129,7 +130,12 @@ function history_log(string $action, string $type, $id, string $summary, ?array 
         'summary' => mb_substr($summary, 0, 250),
         'snapshot' => $revertible ? json_encode(['s' => $snapshot], JSON_UNESCAPED_UNICODE) : null,
         'created_at' => now(),
-    ]);
+        ]);
+    } catch (Throwable $e) {
+        // History must never stop a save (e.g. while a database upgrade is pending).
+        app_log('history', 'could not log', ['error' => $e->getMessage()]);
+        return 0;
+    }
     if ($revertible) {
         $_SESSION['_undo'] = $logId;
     }

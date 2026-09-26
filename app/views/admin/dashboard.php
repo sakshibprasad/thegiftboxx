@@ -30,6 +30,7 @@ $delta = function (?float $c): string {
     return '<span class="delta ' . ($c >= 0 ? 'up' : 'down') . '">' . ($c >= 0 ? '↑' : '↓') . ' ' . abs(round($c)) . '%</span>';
 };
 ?>
+<?php $missingImgs = count(images_missing()); if ($missingImgs): ?><div class="notice warn" style="margin-bottom:16px"><?= icon('image') ?> <strong><?= $missingImgs ?> product photos are missing from the server.</strong> <a class="link" href="/import">Restore them in one click →</a></div><?php endif; ?>
 <div class="page-head">
     <div><h1><?= $greet ?>, <?= e(explode(' ', $u['name'] ?: 'there')[0]) ?></h1><p><?= date('l, j F') ?> · Here’s how the store is doing.</p></div>
     <div class="segmented">
